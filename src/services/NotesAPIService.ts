@@ -2,6 +2,7 @@ import { Note, Attachment, ChecklistItem, NoteMetadata, AttachmentType } from '.
 import { EventKitBridge } from './platforms/EventKitBridge';
 import { AppleScriptBridge } from './platforms/AppleScriptBridge';
 import { FSEventsMonitor } from './platforms/FSEventsMonitor';
+import { ErrorHandlingService, ErrorCategory } from './ErrorHandlingService';
 
 /**
  * Permission status for Apple Notes access
@@ -26,7 +27,7 @@ interface RateLimitConfig {
 /**
  * API operation result
  */
-interface APIResult<T> {
+export interface APIResult<T> {
   success: boolean;
   data?: T;
   error?: string;
@@ -85,8 +86,10 @@ export class AppleNotesAPIService implements NotesAPIService {
   private eventKitBridge?: EventKitBridge;
   private appleScriptBridge?: AppleScriptBridge;
   private fsEventsMonitor?: FSEventsMonitor;
+  private errorHandlingService: ErrorHandlingService;
 
-  constructor() {
+  constructor(errorHandlingService?: ErrorHandlingService) {
+    this.errorHandlingService = errorHandlingService || new ErrorHandlingService();
     this.initializePlatformSpecific();
   }
 
@@ -162,50 +165,70 @@ export class AppleNotesAPIService implements NotesAPIService {
 
   /**
    * Get all notes with rate limiting and retry logic
+   * Requirement 15.2: API retry logic with exponential backoff
    */
   async getAllNotes(): Promise<APIResult<Note[]>> {
-    return await this.executeWithRateLimit(async () => {
-      const permissionStatus = await this.checkPermissionStatus();
-      if (permissionStatus !== PermissionStatus.GRANTED) {
-        return { success: false, error: 'Permission not granted' };
-      }
+    return await this.errorHandlingService.handleAPIFailure(
+      async () => {
+        const permissionStatus = await this.checkPermissionStatus();
+        if (permissionStatus !== PermissionStatus.GRANTED) {
+          throw new Error('Permission not granted');
+        }
 
-      try {
         if (this.isIOS() && this.eventKitBridge) {
-          return await this.eventKitBridge.getAllNotes();
+          const result = await this.eventKitBridge.getAllNotes();
+          if (!result.success) {
+            throw new Error(result.error || 'EventKit operation failed');
+          }
+          return result.data!;
         } else if (this.isMacOS() && this.appleScriptBridge) {
-          return await this.appleScriptBridge.getAllNotes();
+          const result = await this.appleScriptBridge.getAllNotes();
+          if (!result.success) {
+            throw new Error(result.error || 'AppleScript operation failed');
+          }
+          return result.data!;
         }
         
-        return { success: false, error: 'Platform not supported' };
-      } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-    });
+        throw new Error('Platform not supported');
+      },
+      'getAllNotes',
+      ErrorCategory.API_FAILURE
+    ).then(data => ({ success: true, data }))
+     .catch(error => ({ success: false, error: error.message }));
   }
 
   /**
    * Get note by ID with rate limiting
+   * Requirement 15.2: API retry logic with exponential backoff
    */
   async getNoteById(id: string): Promise<APIResult<Note>> {
-    return await this.executeWithRateLimit(async () => {
-      const permissionStatus = await this.checkPermissionStatus();
-      if (permissionStatus !== PermissionStatus.GRANTED) {
-        return { success: false, error: 'Permission not granted' };
-      }
+    return await this.errorHandlingService.handleAPIFailure(
+      async () => {
+        const permissionStatus = await this.checkPermissionStatus();
+        if (permissionStatus !== PermissionStatus.GRANTED) {
+          throw new Error('Permission not granted');
+        }
 
-      try {
         if (this.isIOS() && this.eventKitBridge) {
-          return await this.eventKitBridge.getNoteById(id);
+          const result = await this.eventKitBridge.getNoteById(id);
+          if (!result.success) {
+            throw new Error(result.error || 'EventKit operation failed');
+          }
+          return result.data!;
         } else if (this.isMacOS() && this.appleScriptBridge) {
-          return await this.appleScriptBridge.getNoteById(id);
+          const result = await this.appleScriptBridge.getNoteById(id);
+          if (!result.success) {
+            throw new Error(result.error || 'AppleScript operation failed');
+          }
+          return result.data!;
         }
         
-        return { success: false, error: 'Platform not supported' };
-      } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-    });
+        throw new Error('Platform not supported');
+      },
+      `getNoteById(${id})`,
+      ErrorCategory.API_FAILURE
+    ).then(data => ({ success: true, data }))
+     .catch(error => ({ success: false, error: error.message }));
   }
 
   /**

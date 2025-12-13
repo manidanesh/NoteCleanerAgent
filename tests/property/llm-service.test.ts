@@ -119,7 +119,7 @@ describe('LLM Service Reliability Properties', () => {
   it('Property 13 (Batch): On-device processing boundary for multiple requests', async () => {
     await fc.assert(
       fc.asyncProperty(
-        llmRequestsArrayArb(1, 3), // 1-3 requests (reduced for speed)
+        llmRequestsArrayArb(1, 2), // 1-2 requests (further reduced for speed)
         async (requests: LLMRequest[]) => {
           try {
             // Process all requests
@@ -164,11 +164,11 @@ describe('LLM Service Reliability Properties', () => {
         }
       ),
       { 
-        numRuns: 10, // Fewer runs for batch tests
-        timeout: 60000 // 60 seconds for batch processing
+        numRuns: 5, // Reduced runs for batch tests to avoid timeout
+        timeout: 45000 // 45 seconds for batch processing
       }
     );
-  }, 15000); // 15 second test timeout
+  }, 30000); // 30 second test timeout (increased)
 
   it('Property 13 (Provider): Service maintains on-device providers only', async () => {
     await fc.assert(

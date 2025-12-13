@@ -13,6 +13,7 @@ export interface Recommendation {
   suggestedTitle?: string;
   suggestedFolder?: string;
   timestamp: Date;
+  status: RecommendationStatus;
 }
 
 /**

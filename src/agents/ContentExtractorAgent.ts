@@ -2,6 +2,7 @@ import { Note, Attachment, ChecklistItem, AttachmentType, NoteMetadata } from '.
 import { LLMRequest, LLMRequestType, ContentAnalysis, Entity, EntityType, ContentType } from '../models';
 import { LLMService } from '../services/LLMService';
 import { LLMServiceImpl } from '../services/LLMService';
+import { ErrorHandlingService, ErrorCategory } from '../services/ErrorHandlingService';
 
 /**
  * Extracted content result from processing a note
@@ -74,16 +75,18 @@ export interface ProcessingError {
  */
 export class ContentExtractorAgent {
   private llmService: LLMService;
+  private errorHandlingService: ErrorHandlingService;
   private ocrEnabled: boolean = true;
   private imageAnalysisEnabled: boolean = true;
 
-  constructor(llmService?: LLMService) {
+  constructor(llmService?: LLMService, errorHandlingService?: ErrorHandlingService) {
     this.llmService = llmService || new LLMServiceImpl({
       preferOnDevice: true,
       allowCloudWithConsent: false,
       fallbackToRules: true,
       privacyLevel: 'strict_on_device' as any
     });
+    this.errorHandlingService = errorHandlingService || new ErrorHandlingService();
   }
 
   /**
@@ -102,12 +105,22 @@ export class ContentExtractorAgent {
         try {
           ocrText = await this.processHandwriting(note);
         } catch (error) {
+          // Requirement 15.1: Graceful OCR failure handling with text-only fallback
+          const errorInfo = this.errorHandlingService.handleOCRFailure(
+            error as Error,
+            note.id,
+            normalizedText
+          );
+          
           errors.push({
             component: 'OCR',
-            error: `OCR processing failed: ${error}`,
+            error: errorInfo.message,
             severity: 'warning',
             recoverable: true
           });
+          
+          // Continue with text-only content (fallback)
+          console.warn(`OCR failed for note ${note.id}, continuing with text-only content`);
         }
       }
 

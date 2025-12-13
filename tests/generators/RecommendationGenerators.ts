@@ -54,7 +54,8 @@ export const recommendationArb: fc.Arbitrary<Recommendation> = fc.record({
   relatedNotes: fc.option(fc.array(fc.uuid(), { maxLength: 5 })),
   suggestedTitle: fc.option(fc.string({ minLength: 1, maxLength: 200 })),
   suggestedFolder: fc.option(fc.string({ minLength: 1, maxLength: 100 })),
-  timestamp: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
+  timestamp: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }),
+  status: recommendationStatusArb
 });
 
 /**

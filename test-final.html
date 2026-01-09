@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Final Test - Note Opening</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-button { 
+            background: #27ae60; 
+            color: white; 
+            padding: 15px 25px; 
+            border: none; 
+            border-radius: 5px; 
+            margin: 10px; 
+            cursor: pointer; 
+            font-size: 16px;
+        }
+        .test-button:hover { background: #229954; }
+        .result { 
+            margin: 10px 0; 
+            padding: 10px; 
+            border-radius: 5px; 
+            background: #f8f9fa; 
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Final Test - Note Opening</h1>
+    
+    <p>This test simulates exactly how the main app generates buttons:</p>
+    
+    <div id="test-buttons"></div>
+    
+    <div id="results"></div>
+    
+    <script>
+        // Copy the exact functions from the main app
+        window.openNoteById = function(noteId, noteTitle) {
+            console.log('🌍 GLOBAL: openNoteById called with:', noteId, noteTitle);
+            openInNotesApp(noteId, noteTitle);
+        };
+
+        async function openInNotesApp(noteId, noteTitle) {
+            console.log('🔍 FRONTEND: Opening note with parameters:');
+            console.log('📋 noteId:', noteId);
+            console.log('📋 noteTitle:', noteTitle);
+            
+            try {
+                const requestPayload = { noteId, noteTitle };
+                console.log('📤 FRONTEND: Sending to backend:', JSON.stringify(requestPayload, null, 2));
+                
+                const response = await fetch('/api/open-note', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestPayload)
+                });
+
+                const data = await response.json();
+                console.log('📥 FRONTEND: Backend response:', JSON.stringify(data, null, 2));
+                
+                if (data.success) {
+                    console.log(`✅ SUCCESS: ${data.method} - Note "${noteTitle}" should be open in Apple Notes`);
+                    document.getElementById('results').innerHTML += `<div class="result" style="background: #d4edda;">✅ Successfully opened: "${noteTitle}"</div>`;
+                } else {
+                    console.error(`❌ FAILED: ${data.error}`);
+                    document.getElementById('results').innerHTML += `<div class="result" style="background: #f8d7da;">❌ Failed: ${data.error}</div>`;
+                }
+                
+            } catch (error) {
+                console.error('❌ FRONTEND: Error opening note:', error);
+                document.getElementById('results').innerHTML += `<div class="result" style="background: #f8d7da;">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Simulate the exact HTML generation from the main app
+        const realNotes = [
+            {
+                id: 'x-coredata://FA0EA356-82B6-4B65-9C74-F1528B2816BD/ICNote/p1100',
+                title: 'List of courses for AI',
+                content: 'AI course content...',
+                folder: 'AI for product managers'
+            },
+            {
+                id: 'x-coredata://FA0EA356-82B6-4B65-9C74-F1528B2816BD/ICNote/p719',
+                title: 'Story :: Most proud',
+                content: 'Story content...',
+                folder: 'Amazon Feb 2022'
+            }
+        ];
+        
+        // Generate buttons exactly like the main app
+        const buttonsContainer = document.getElementById('test-buttons');
+        buttonsContainer.innerHTML = realNotes.map((note, index) => `
+            <div style="background: #f8f9fa; border: 1px solid #3498db; border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+                            📱 "${note.title}"
+                        </div>
+                        <div style="color: #6c757d; font-size: 12px; margin-bottom: 8px;">
+                            📁 ${note.folder} • Real Apple Note (Core Data ID)
+                        </div>
+                        <div style="color: #6c757d; font-size: 10px; margin-bottom: 8px; font-family: monospace;">
+                            ID: ${note.id.substring(0, 50)}...
+                        </div>
+                    </div>
+                    <button class="test-button" onclick="window.openNoteById('${note.id}', '${note.title.replace(/'/g, "\\'")}');" 
+                            style="background: #27ae60; font-size: 14px; padding: 10px 15px;">
+                        📱 Open in Apple Notes
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+        console.log('🧪 Test page loaded. Try clicking the buttons above.');
+    </script>
+</body>
+</html>

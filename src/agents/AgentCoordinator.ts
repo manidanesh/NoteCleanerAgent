@@ -10,9 +10,12 @@ import { OrganizationAgent } from './OrganizationAgent';
 import { LearningComponent } from './LearningComponent';
 import { JunkNoteDetectorAgent, JunkDetectionResult } from './JunkNoteDetectorAgent';
 import { LLMService } from '../services/LLMService';
-import { VectorIndexingService } from '../services/VectorIndexingService';
+import { VectorIndexingService, VectorIndexingServiceImpl } from '../services/VectorIndexingService';
 import { PerformanceOptimizer } from '../services/PerformanceOptimizer';
 import { BatchProcessor } from '../services/BatchProcessor';
+import { LLMOptimizationService } from '../services/LLMOptimizationService';
+import { DatabaseService } from '../services/DatabaseService';
+import { WorkerPool } from '../services/worker/WorkerPool';
 
 /**
  * Agent capability registration information
@@ -127,6 +130,8 @@ export enum MessagePriority {
  * Implements Requirements 25.1, 25.2, 25.3, 25.4, 25.5
  */
 export class AgentCoordinator {
+  private static instance: AgentCoordinator;
+
   private agents: Map<string, AgentCapability> = new Map();
   private workflow: WorkflowStep[] = [];
   private processingQueue: Note[] = [];
@@ -143,6 +148,7 @@ export class AgentCoordinator {
   // Performance optimization components
   private performanceOptimizer: PerformanceOptimizer;
   private batchProcessor: BatchProcessor;
+  private llmOptimizationService: LLMOptimizationService;
 
   // Agent instances
   private contentExtractor: ContentExtractorAgent;
@@ -152,8 +158,25 @@ export class AgentCoordinator {
   private learningComponent: LearningComponent;
   private junkDetector: JunkNoteDetectorAgent;
 
+  public static getInstance(
+    llmService?: LLMService,
+    databaseService?: DatabaseService,
+    workerPool?: WorkerPool,
+    config?: Partial<SystemConfiguration>
+  ): AgentCoordinator {
+    if (!AgentCoordinator.instance) {
+      if (!llmService) {
+        throw new Error('LLMService is required for first initialization');
+      }
+      AgentCoordinator.instance = new AgentCoordinator(llmService, databaseService, workerPool, config);
+    }
+    return AgentCoordinator.instance;
+  }
+
   constructor(
     llmService: LLMService,
+    databaseService?: DatabaseService,
+    workerPool?: WorkerPool,
     config?: Partial<SystemConfiguration>
   ) {
     this.config = {
@@ -167,7 +190,6 @@ export class AgentCoordinator {
       ...config
     };
 
-    // Enforce privacy mode constraints
     if (this.config.privacyMode === 'strict') {
       this.config.enableCloudLLM = false;
     }
@@ -183,10 +205,13 @@ export class AgentCoordinator {
       enableInterruption: true
     });
 
+    // Initialize services
+    const vectorIndexingService = new VectorIndexingServiceImpl(databaseService);
+
     // Initialize agents
     this.contentExtractor = new ContentExtractorAgent(llmService);
-    this.utilityScorer = new UtilityScorerAgent(llmService);
-    this.duplicateDetector = new DuplicateDetectorAgent(llmService);
+    this.utilityScorer = new UtilityScorerAgent(llmService, workerPool);
+    this.duplicateDetector = new DuplicateDetectorAgent(llmService, vectorIndexingService);
     this.organizationAgent = new OrganizationAgent(llmService);
     this.learningComponent = new LearningComponent();
     this.junkDetector = new JunkNoteDetectorAgent(llmService);
@@ -194,9 +219,37 @@ export class AgentCoordinator {
     // Initialize batch processor
     this.batchProcessor = new BatchProcessor(this, this.performanceOptimizer);
 
+    // Initialize LLM optimization service
+    this.llmOptimizationService = new LLMOptimizationService(llmService);
+
+    // Inject optimization service into LLM service for agents to use
+    (llmService as any).optimizationService = this.llmOptimizationService;
+
     // Register agents and setup workflow
     this.initializeAgents();
     this.setupWorkflow();
+  }
+
+  /**
+   * Initialize the agent coordinator and all its components
+   */
+  public async initialize(): Promise<void> {
+    console.log('Initializing AgentCoordinator...');
+
+    // Initialize performance optimizer
+    await this.performanceOptimizer.initialize();
+
+    // Initialize all agents
+    await Promise.all([
+      this.contentExtractor.initialize?.(),
+      this.utilityScorer.initialize?.(),
+      this.duplicateDetector.initialize?.(1000), // Default to 1000 notes for initialization
+      this.organizationAgent.initialize?.(),
+      this.learningComponent.initialize?.(),
+      this.junkDetector.initialize?.()
+    ].filter(Boolean));
+
+    console.log('AgentCoordinator initialized successfully');
   }
 
   /**
@@ -413,7 +466,7 @@ export class AgentCoordinator {
       for (let i = 0; i < this.workflow.length; i++) {
         const step = this.workflow[i];
         const progress = ((i + 1) / this.workflow.length) * 100;
-        
+
         this.updateProcessingStatus(`Executing ${step.name}`, progress);
 
         try {
@@ -471,7 +524,7 @@ export class AgentCoordinator {
    */
   async processNotesLegacy(notes: Note[]): Promise<ProcessingResult[]> {
     const results: ProcessingResult[] = [];
-    
+
     // Check if we can process based on system resources
     if (!(await this.performanceOptimizer.canProcessBatch())) {
       throw new Error('System resources insufficient for processing');
@@ -481,7 +534,7 @@ export class AgentCoordinator {
     const batches = this.performanceOptimizer.createOptimizedBatches(notes);
 
     this.isProcessing = true;
-    
+
     try {
       for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
         // Check for interruption
@@ -498,7 +551,7 @@ export class AgentCoordinator {
 
         const batch = batches[batchIndex];
         const batchProgress = (batchIndex / batches.length) * 100;
-        
+
         this.updateProcessingStatus(
           `Processing batch ${batchIndex + 1} of ${batches.length}`,
           batchProgress
@@ -731,6 +784,8 @@ export class AgentCoordinator {
         return !!result.utilityScore;
       case 'indexing':
         return true; // Always satisfied for single note processing
+      case 'junk-detection':
+        return !!result.junkDetectionResult;
       default:
         return false;
     }
@@ -752,8 +807,8 @@ export class AgentCoordinator {
    */
   private async checkSystemResources(): Promise<void> {
     // Delegate to performance optimizer
-    return await this.performanceOptimizer.canProcessBatch() ? 
-      Promise.resolve() : 
+    return await this.performanceOptimizer.canProcessBatch() ?
+      Promise.resolve() :
       new Promise(resolve => setTimeout(resolve, 1000));
   }
 
@@ -765,8 +820,8 @@ export class AgentCoordinator {
       isProcessing: progress < 100,
       currentStep,
       progress,
-      estimatedTimeRemaining: progress > 0 ? 
-        ((Date.now() - (this.processingStatus as any).startTime) / progress) * (100 - progress) : 
+      estimatedTimeRemaining: progress > 0 ?
+        ((Date.now() - (this.processingStatus as any).startTime) / progress) * (100 - progress) :
         undefined
     };
 
@@ -911,7 +966,7 @@ export class AgentCoordinator {
    */
   updateConfiguration(newConfig: Partial<SystemConfiguration>): void {
     this.config = { ...this.config, ...newConfig };
-    
+
     // Enforce privacy mode constraints
     if (this.config.privacyMode === 'strict') {
       this.config.enableCloudLLM = false;
@@ -994,16 +1049,16 @@ export class AgentCoordinator {
   async shutdown(): Promise<void> {
     this.isProcessing = false;
     this.processingQueue = [];
-    
+
     // Shutdown performance components
     this.performanceOptimizer.shutdown();
-    
+
     // Clear duplicate detector index
     await this.duplicateDetector.clearIndex();
-    
+
     // Clear coordination callbacks
     this.coordinationCallbacks.clear();
-    
+
     console.log('Agent Coordinator shutdown complete');
   }
 }

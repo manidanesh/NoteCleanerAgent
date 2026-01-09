@@ -3,7 +3,7 @@ import { AgentCoordinator } from '../agents/AgentCoordinator';
 import { AppleNotesAPIService } from '../services/NotesAPIService';
 import { RecommendationActionService } from '../services/RecommendationActionService';
 import { CheckpointService } from '../services/CheckpointService';
-import { LLMService } from '../services/LLMService';
+import { LLMServiceFactory } from '../services/LLMServiceFactory';
 
 /**
  * Example demonstrating bulk cleanup functionality
@@ -14,9 +14,9 @@ export class BulkCleanupExample {
 
   constructor() {
     // Initialize dependencies
-    const llmService = new LLMService();
-    const agentCoordinator = new AgentCoordinator(llmService);
-    const notesAPI = new AppleNotesAPIService();
+    const llmService = LLMServiceFactory.createPrivacyFirst();
+    const agentCoordinator = AgentCoordinator.getInstance(llmService);
+    const notesAPI = AppleNotesAPIService.getInstance();
     const actionService = new RecommendationActionService(notesAPI, {} as any);
     const checkpointService = new CheckpointService({} as any);
 

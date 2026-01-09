@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Notes AI - Mobile</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow-x: hidden;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        .mobile-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 15px 20px;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .mobile-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d3748;
+            text-align: center;
+        }
+
+        .mobile-header .subtitle {
+            font-size: 14px;
+            color: #718096;
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        .mobile-content {
+            padding: 20px;
+        }
+
+        .mobile-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .card-icon.analyze { background: #4299e1; }
+        .card-icon.organize { background: #48bb78; }
+        .card-icon.cleanup { background: #ed8936; }
+        .card-icon.insights { background: #9f7aea; }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .mobile-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 15px 0;
+        }
+
+        .mobile-stat {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .mobile-stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            display: block;
+        }
+
+        .mobile-stat-label {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .mobile-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+            transition: all 0.2s ease;
+        }
+
+        .mobile-button:active {
+            transform: scale(0.98);
+        }
+
+        .mobile-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .mobile-progress {
+            width: 100%;
+            height: 6px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+
+        .mobile-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .mobile-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 500;
+            margin: 10px 0;
+        }
+
+        .mobile-status.ready {
+            background: rgba(72, 187, 120, 0.2);
+            color: #38a169;
+        }
+
+        .mobile-status.processing {
+            background: rgba(237, 137, 54, 0.2);
+            color: #dd6b20;
+        }
+
+        .recommendations-mobile {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .recommendation-mobile {
+            background: rgba(102, 126, 234, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        .recommendation-mobile-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .recommendation-mobile-desc {
+            font-size: 13px;
+            color: #718096;
+            line-height: 1.4;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-around;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 60px;
+        }
+
+        .nav-item.active {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+
+        .nav-icon {
+            font-size: 20px;
+        }
+
+        .nav-label {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .floating-action {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .floating-action:active {
+            transform: scale(0.95);
+        }
+
+        .notification-mobile {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            right: 20px;
+            background: rgba(72, 187, 120, 0.95);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            transform: translateY(-100px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification-mobile.show {
+            transform: translateY(0);
+        }
+
+        .loading-mobile {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner-mobile {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(102, 126, 234, 0.2);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .quick-action {
+            background: rgba(102, 126, 234, 0.1);
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #667eea;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quick-action:active {
+            transform: scale(0.98);
+            background: rgba(102, 126, 234, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-header">
+        <h1>🤖 Notes AI</h1>
+        <div class="subtitle">Smart organization for your notes</div>
+    </div>
+
+    <div class="mobile-content">
+        <!-- Quick Stats Card -->
+        <div class="mobile-card">
+            <div class="card-header">
+                <div class="card-icon analyze">📊</div>
+                <div class="card-title">Your Notes Overview</div>
+            </div>
+            <div class="mobile-stats">
+                <div class="mobile-stat">
+                    <span class="mobile-stat-number" id="mobileNotes">0</span>
+                    <div class="mobile-stat-label">Total Notes</div>
+                </div>
+                <div class="mobile-stat">
+                    <span class="mobile-stat-number" id="mobileRecommendations">0</span>
+                    <div class="mobile-stat-label">Suggestions</div>
+                </div>
+            </div>
+            <div class="mobile-status ready" id="mobileStatus">
+                <span>●</span> Ready to analyze
+            </div>
+            <div class="mobile-progress">
+                <div class="mobile-progress-fill" id="mobileProgress"></div>
+            </div>
+        </div>
+
+        <!-- Analysis Card -->
+        <div class="mobile-card">
+            <div class="card-header">
+                <div class="card-icon analyze">🔍</div>
+                <div class="card-title">Smart Analysis</div>
+            </div>
+            <button class="mobile-button" onclick="mobileAnalyze()">
+                Analyze My Notes
+            </button>
+            <div class="quick-actions">
+                <button class="quick-action" onclick="quickScan()">Quick Scan</button>
+                <button class="quick-action" onclick="deepAnalysis()">Deep Analysis</button>
+            </div>
+        </div>
+
+        <!-- Organization Card -->
+        <div class="mobile-card">
+            <div class="card-header">
+                <div class="card-icon organize">📁</div>
+                <div class="card-title">Organization</div>
+            </div>
+            <div class="mobile-stats">
+                <div class="mobile-stat">
+                    <span class="mobile-stat-number" id="mobileDuplicates">0</span>
+                    <div class="mobile-stat-label">Duplicates</div>
+                </div>
+                <div class="mobile-stat">
+                    <span class="mobile-stat-number" id="mobileOrganized">0</span>
+                    <div class="mobile-stat-label">Organized</div>
+                </div>
+            </div>
+            <button class="mobile-button" onclick="mobileOrganize()">
+                Organize Notes
+            </button>
+        </div>
+
+        <!-- Recommendations Card -->
+        <div class="mobile-card">
+            <div class="card-header">
+                <div class="card-icon insights">💡</div>
+                <div class="card-title">AI Recommendations</div>
+            </div>
+            <div class="loading-mobile" id="mobileLoading">
+                <div class="spinner-mobile"></div>
+                <p>Generating insights...</p>
+            </div>
+            <div class="recommendations-mobile" id="mobileRecommendationsList">
+                <div class="recommendation-mobile">
+                    <div class="recommendation-mobile-title">Welcome to Notes AI!</div>
+                    <div class="recommendation-mobile-desc">Tap "Analyze My Notes" to get started with AI-powered organization.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button class="floating-action" onclick="quickAnalyze()">
+        ⚡
+    </button>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('home')">
+            <div class="nav-icon">🏠</div>
+            <div class="nav-label">Home</div>
+        </div>
+        <div class="nav-item" onclick="switchTab('analyze')">
+            <div class="nav-icon">🔍</div>
+            <div class="nav-label">Analyze</div>
+        </div>
+        <div class="nav-item" onclick="switchTab('organize')">
+            <div class="nav-icon">📁</div>
+            <div class="nav-label">Organize</div>
+        </div>
+        <div class="nav-item" onclick="switchTab('settings')">
+            <div class="nav-icon">⚙️</div>
+            <div class="nav-label">Settings</div>
+        </div>
+    </div>
+
+    <script>
+        let mobileAnalysisInProgress = false;
+
+        async function mobileAnalyze() {
+            if (mobileAnalysisInProgress) return;
+            
+            mobileAnalysisInProgress = true;
+            const button = event.target;
+            const originalText = button.textContent;
+            const statusEl = document.getElementById('mobileStatus');
+            const progressEl = document.getElementById('mobileProgress');
+            
+            // Update UI
+            button.textContent = 'Analyzing...';
+            button.disabled = true;
+            statusEl.className = 'mobile-status processing';
+            statusEl.innerHTML = '<span>●</span> Analyzing notes...';
+            
+            // Animate progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress > 90) progress = 90;
+                progressEl.style.width = progress + '%';
+            }, 300);
+
+            try {
+                // Simulate analysis (same as desktop)
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                const mockResult = {
+                    totalNotes: 5,
+                    recommendations: [
+                        {
+                            title: "📚 Group AI Learning Notes",
+                            description: "Create a dedicated folder for your AI course materials."
+                        },
+                        {
+                            title: "🔄 Merge Similar Content",
+                            description: "Found duplicate content about prompt engineering."
+                        },
+                        {
+                            title: "🗑️ Clean Up Screenshots",
+                            description: "Archive old screenshot notes to reduce clutter."
+                        },
+                        {
+                            title: "🏷️ Add Tags",
+                            description: "Tag your development notes for better searchability."
+                        }
+                    ],
+                    duplicates: 2,
+                    junkNotes: 1
+                };
+                
+                updateMobileResults(mockResult);
+                
+            } catch (error) {
+                console.log('Error:', error);
+            }
+            
+            // Complete progress
+            clearInterval(progressInterval);
+            progressEl.style.width = '100%';
+            
+            // Reset UI
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.disabled = false;
+                statusEl.className = 'mobile-status ready';
+                statusEl.innerHTML = '<span>●</span> Analysis complete';
+                progressEl.style.width = '0%';
+                mobileAnalysisInProgress = false;
+                
+                showMobileNotification('✅ Analysis completed successfully!');
+            }, 1000);
+        }
+
+        function updateMobileResults(result) {
+            document.getElementById('mobileNotes').textContent = result.totalNotes || 5;
+            document.getElementById('mobileRecommendations').textContent = result.recommendations?.length || 4;
+            document.getElementById('mobileDuplicates').textContent = result.duplicates || 2;
+            
+            // Update recommendations list
+            const listEl = document.getElementById('mobileRecommendationsList');
+            if (result.recommendations) {
+                listEl.innerHTML = result.recommendations.map(rec => `
+                    <div class="recommendation-mobile">
+                        <div class="recommendation-mobile-title">${rec.title}</div>
+                        <div class="recommendation-mobile-desc">${rec.description}</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        async function mobileOrganize() {
+            const button = event.target;
+            button.textContent = 'Organizing...';
+            button.disabled = true;
+            
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            document.getElementById('mobileOrganized').textContent = '5';
+            button.textContent = 'Organize Notes';
+            button.disabled = false;
+            
+            showMobileNotification('📁 Notes organized successfully!');
+        }
+
+        async function quickScan() {
+            showMobileNotification('⚡ Quick scan completed!');
+            document.getElementById('mobileNotes').textContent = '5';
+        }
+
+        async function deepAnalysis() {
+            showMobileNotification('🔍 Deep analysis started...');
+            setTimeout(() => mobileAnalyze(), 500);
+        }
+
+        async function quickAnalyze() {
+            showMobileNotification('⚡ Quick analysis running...');
+            setTimeout(() => {
+                document.getElementById('mobileRecommendations').textContent = '3';
+                showMobileNotification('✅ Found 3 new recommendations!');
+            }, 1500);
+        }
+
+        function switchTab(tab) {
+            // Remove active class from all nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Add active class to clicked item
+            event.currentTarget.classList.add('active');
+            
+            showMobileNotification(`📱 Switched to ${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+        }
+
+        function showMobileNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification-mobile';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // Show notification
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            // Hide notification
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 2500);
+        }
+
+        // Initialize mobile app
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('📱 Notes AI Mobile App Loaded');
+            
+            // Add touch feedback
+            document.querySelectorAll('.mobile-button, .quick-action, .nav-item').forEach(element => {
+                element.addEventListener('touchstart', () => {
+                    element.style.transform = 'scale(0.98)';
+                });
+                
+                element.addEventListener('touchend', () => {
+                    element.style.transform = 'scale(1)';
+                });
+            });
+            
+            showMobileNotification('📱 Welcome to Notes AI Mobile!');
+        });
+    </script>
+</body>
+</html>

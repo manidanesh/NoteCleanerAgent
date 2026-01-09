@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { DuplicateGroup } from '../../models/DuplicateGroup';
+import { DuplicateGroup, MergeType } from '../../models/DuplicateGroup';
 import { Note } from '../../models/Note';
 import { Recommendation } from '../../models/Recommendation';
 import {
@@ -17,6 +17,7 @@ import {
   getDuplicateGroupStyle,
   getDuplicateHighlightStyle,
   getAccessibleTextStyle,
+  getAccessibleContainerStyle,
   AccessibilityLabels,
   AccessibilityHints,
   ComponentStyles,
@@ -247,7 +248,7 @@ export const DuplicateGroupCard: React.FC<DuplicateGroupCardProps> = ({
           styles.strategyText,
           getAccessibleTextStyle(styles.strategyText, isHighContrast, isLargeText),
         ]}>
-          {duplicateGroup.mergeStrategy === 'keep_primary' 
+          {duplicateGroup.mergeStrategy.type === MergeType.KEEP_PRIMARY 
             ? 'Keep the most complete version and archive duplicates'
             : 'Merge content from all versions into one comprehensive note'
           }
@@ -290,7 +291,7 @@ export const DuplicateGroupCard: React.FC<DuplicateGroupCardProps> = ({
               styles.conflictItem,
               getAccessibleTextStyle(styles.conflictItem, isHighContrast, isLargeText),
             ]}>
-              • {conflict.description}
+              • {conflict.field}: {conflict.values.length} conflicting values
             </Text>
           ))}
         </View>

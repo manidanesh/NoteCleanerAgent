@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes Helper</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .app-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 20px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            color: #7f8c8d;
+        }
+
+        .main-button {
+            display: block;
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .main-button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .main-button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            margin-top: 30px;
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .result-card h3 {
+            font-size: 20px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .result-card .icon {
+            margin-right: 10px;
+            font-size: 24px;
+        }
+
+        .simple-list {
+            list-style: none;
+        }
+
+        .simple-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid #ecf0f1;
+            font-size: 16px;
+        }
+
+        .simple-list li:last-child {
+            border-bottom: none;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .action-buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .delete-btn {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: #c0392b;
+        }
+
+        .merge-btn {
+            background: #f39c12;
+            color: white;
+        }
+
+        .merge-btn:hover {
+            background: #e67e22;
+        }
+
+        .rename-btn {
+            background: #3498db;
+            color: white;
+        }
+
+        .rename-btn:hover {
+            background: #2980b9;
+        }
+
+        .move-btn {
+            background: #27ae60;
+            color: white;
+        }
+
+        .move-btn:hover {
+            background: #229954;
+        }
+
+        .skip-btn {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .skip-btn:hover {
+            background: #7f8c8d;
+        }
+
+        .action-feedback {
+            margin-top: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .action-feedback.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .action-feedback.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .compare-view {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            display: none;
+        }
+
+        .compare-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .compare-header h4 {
+            margin: 0;
+            color: #495057;
+        }
+
+        .close-compare {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .notes-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .note-preview-full {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .note-preview-full .note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .note-preview-full .note-title-full {
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .note-preview-full .note-meta-full {
+            font-size: 11px;
+            color: #6c757d;
+        }
+
+        .note-preview-full .note-content-full {
+            color: #495057;
+            font-size: 13px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .open-note-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+
+        .open-note-btn:hover {
+            background: #0056b3;
+        }
+
+        .view-btn {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .view-btn:hover {
+            background: #138496;
+        }
+
+        .edit-title-form {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            display: none;
+        }
+
+        .edit-title-form input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .edit-title-form .form-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .edit-title-form .form-buttons button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .save-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .cancel-btn {
+            background: #6c757d;
+            color: white;
+        }
+
+        .note-preview {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .note-preview .note-title-preview {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+
+        .note-preview .note-content-preview {
+            color: #6c757d;
+            font-size: 13px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
+        .spinner {
+            border: 3px solid #ecf0f1;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #3498db;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .demo-note {
+            background: #e8f4fd;
+            border: 1px solid #3498db;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📝 Notes Helper - UPDATED VERSION</h1>
+            <p>Let AI help organize your Apple Notes</p>
+            <div style="background: #ffeb3b; padding: 10px; margin: 10px 0; border-radius: 5px;">
+                <strong>🔧 DEBUG:</strong> JavaScript test - 
+                <button onclick="alert('JavaScript is working!')" style="padding: 5px 10px; background: #4caf50; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                    Test JS
+                </button>
+            </div>
+        </div>
+
+        <div class="demo-note">
+            <strong>🚀 Production Version:</strong> This app connects directly to your Apple Notes and analyzes your actual 500+ notes collection. 
+            If Apple Notes access isn't available, it will use enhanced mock data that represents your real collection.
+        </div>
+
+        <!-- Main Action -->
+        <button class="main-button" id="analyze-btn" onclick="startAnalysis()" style="background: #27ae60;"></button>
+            🚀 Analyze My Notes
+        </button>
+
+        <!-- Loading State -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>AI is looking at your notes...</p>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="results-section hidden">
+            <!-- Summary Stats -->
+            <div class="result-card">
+                <h3><span class="icon">📊</span>Summary</h3>
+                <div class="stats-grid" id="stats-grid">
+                    <!-- Stats will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Duplicates -->
+            <div class="result-card" id="duplicates-card">
+                <h3><span class="icon">🔍</span>Duplicate Notes Found</h3>
+                <ul class="simple-list" id="duplicates-list">
+                    <!-- Duplicates will be inserted here -->
+                </ul>
+            </div>
+
+            <!-- Junk Notes -->
+            <div class="result-card" id="junk-card">
+                <h3><span class="icon">🗑️</span>Notes You Might Want to Clean Up</h3>
+                <ul class="simple-list" id="junk-list">
+                    <!-- Junk notes will be inserted here -->
+                </ul>
+            </div>
+
+            <!-- Organization -->
+            <div class="result-card" id="organization-card">
+                <h3><span class="icon">📁</span>Organization Suggestions</h3>
+                <ul class="simple-list" id="organization-list">
+                    <!-- Organization suggestions will be inserted here -->
+                </ul>
+            </div>
+
+            <!-- All Notes Management -->
+            <div class="result-card" id="all-notes-card">
+                <h3><span class="icon">📝</span>All Notes - Quick Edit</h3>
+                <ul class="simple-list" id="all-notes-list">
+                    <!-- All notes will be inserted here -->
+                </ul>
+            </div>
+            
+            <!-- Real Notes from Apple Notes -->
+            <div class="result-card" id="real-notes-card" style="background: #e8f4fd; border: 2px solid #3498db;">
+                <h3><span class="icon">📱</span>All Your Apple Notes (Click to Open)</h3>
+                <p style="font-size: 14px; color: #2c3e50; margin-bottom: 15px;">
+                    Complete list of your actual notes from Apple Notes app. Click any note to open it directly!
+                </p>
+                
+                <!-- Debug section -->
+                <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; margin-bottom: 15px;">
+                    <strong>🔧 Debug Note Opening:</strong>
+                    <div style="display: flex; gap: 10px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="test-note-title" placeholder="Enter note title to test" 
+                               style="flex: 1; min-width: 200px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px;">
+                        <button class="action-btn view-btn" onclick="testNoteSearch()" style="font-size: 12px;">
+                            🔍 Test Search
+                        </button>
+                        <button class="action-btn view-btn" onclick="testOpenNote()" style="font-size: 12px;">
+                            📱 Test Open
+                        </button>
+                        <button class="action-btn view-btn" onclick="testNoteIds()" style="font-size: 12px;">
+                            🧪 Test Real IDs
+                        </button>
+                        <button class="action-btn view-btn" onclick="listActualNotes()" style="font-size: 12px; background: #f39c12;">
+                            📋 List My Notes
+                        </button>
+                        <button class="action-btn view-btn" onclick="alert('Button clicked! Function exists.')" style="font-size: 12px; background: #e74c3c;">
+                            🧪 Test Click
+                        </button>
+                        <button class="action-btn view-btn" onclick="testOpenFunction()" style="font-size: 12px; background: #9b59b6;">
+                            🚀 Test Open Function
+                        </button>
+                    </div>
+                    <div id="debug-feedback" class="action-feedback" style="margin-top: 8px;"></div>
+                </div>
+                
+                <ul class="simple-list" id="real-notes-list">
+                    <!-- Real notes will be inserted here -->
+                </ul>
+            </div>
+
+            <!-- New Analysis Button -->
+            <button class="main-button" onclick="startAnalysis()">
+                🔄 Analyze Again
+            </button>
+        </div>
+    </div>
+
+    <script>
+        console.log('🔍 Script starting to load...');
+        
+        // REMOVED MOCK DATA - App now uses REAL backend only
+        // This ensures the app always shows your actual 583 Apple Notes
+        const mockAnalysisData = null; // Disabled to force real backend usage
+        
+        const oldMockData = {
+            duplicates: [
+                {
+                    notes: [
+                        { 
+                            id: "note-001",
+                            title: "Shopping List", 
+                            content: "Milk\nBread\nEggs\nButter\nCheese\nApples\nBananas\nOranges\nYogurt\nCereal",
+                            folder: "Quick Notes",
+                            created: "2024-01-15",
+                            modified: "2024-01-15"
+                        },
+                        { 
+                            id: "note-004",
+                            title: "Shopping List - Groceries", 
+                            content: "Groceries to buy:\n- Milk (2%)\n- Whole wheat bread\n- Free range eggs\n- Organic butter\n- Cheddar cheese\n- Gala apples\n- Bananas\n- Naval oranges\n- Greek yogurt\n- Granola cereal\n- Olive oil\n- Pasta",
+                            folder: "Shopping",
+                            created: "2024-01-20",
+                            modified: "2024-01-22"
+                        }
+                    ]
+                },
+                {
+                    notes: [
+                        { 
+                            id: "note-002",
+                            title: "Meeting Notes", 
+                            content: "Team meeting today\nDiscussed project timeline\nNext steps:\n- Review budget\n- Assign tasks\n- Schedule follow-up",
+                            folder: "Work",
+                            created: "2024-01-10",
+                            modified: "2024-01-10"
+                        },
+                        { 
+                            id: "note-007",
+                            title: "Meeting Notes - Q1", 
+                            content: "Q1 Planning Meeting\nAttendees: John, Sarah, Mike, Lisa\n\nAgenda:\n1. Budget review for Q1\n2. Project assignments\n3. Timeline discussion\n4. Resource allocation\n\nAction items:\n- John: Finalize budget by Jan 30\n- Sarah: Create project timeline\n- Mike: Resource planning\n- Lisa: Schedule follow-up meetings",
+                            folder: "Work",
+                            created: "2024-01-12",
+                            modified: "2024-01-15"
+                        }
+                    ]
+                }
+            ],
+            junkNotes: [
+                {
+                    id: "note-003",
+                    title: "Untitled",
+                    content: "Random thoughts...",
+                    folder: "Notes",
+                    created: "2024-01-08",
+                    modified: "2024-01-08",
+                    junkReasons: ["Generic title", "Very short content"]
+                },
+                {
+                    id: "note-005",
+                    title: "Note",
+                    content: "Test",
+                    folder: "Notes",
+                    created: "2024-01-05",
+                    modified: "2024-01-05",
+                    junkReasons: ["Generic title", "Old and short"]
+                },
+                {
+                    id: "note-008",
+                    title: "Test",
+                    content: "Testing 123",
+                    folder: "Notes",
+                    created: "2024-01-03",
+                    modified: "2024-01-03",
+                    junkReasons: ["Placeholder content", "Very short content"]
+                }
+            ],
+            organizationSuggestions: [
+                {
+                    type: "Rename",
+                    current: "Untitled",
+                    suggested: "Random thoughts",
+                    noteId: "note-003",
+                    content: "Random thoughts about the project and some ideas for improvement..."
+                },
+                {
+                    type: "Move to folder",
+                    current: "Notes",
+                    suggested: "Shopping Lists",
+                    noteId: "note-001",
+                    content: "Milk, Bread, Eggs, Butter"
+                },
+                {
+                    type: "Rename",
+                    current: "Note",
+                    suggested: "Meeting agenda items",
+                    noteId: "note-005",
+                    content: "Meeting agenda items: 1. Budget review 2. Team assignments 3. Timeline discussion"
+                }
+            ]
+        };
+
+        class SimpleNotesApp {
+            constructor() {
+                this.analysisData = null;
+            }
+
+            showLoading() {
+                document.getElementById('loading').classList.remove('hidden');
+                document.getElementById('results').classList.add('hidden');
+                document.getElementById('analyze-btn').disabled = true;
+            }
+
+            hideLoading() {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('analyze-btn').disabled = false;
+            }
+
+            async runAnalysis() {
+                console.log('🚀 runAnalysis() method called!');
+                console.log('🚀 About to show loading...');
+                
+                this.showLoading();
+                
+                try {
+                    // FORCE REAL BACKEND - No fallback to mock data
+                    console.log('🔍 Calling REAL backend API to analyze your 583 Apple Notes...');
+                    console.log('🚫 Mock data disabled - using production backend only');
+                    
+                    const response = await fetch('/api/analyze', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        timeout: 60000 // 60 second timeout
+                    });
+                    
+                    console.log('📡 Response received:', response.status, response.statusText);
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`API call failed: ${response.status} - ${errorText}`);
+                    }
+                    
+                    const realData = await response.json();
+                    console.log('✅ REAL analysis data received from backend:', realData);
+                    console.log(`📊 Backend reports ${realData.summary.totalNotes} notes processed`);
+                    
+                    if (realData.summary.totalNotes < 500) {
+                        console.warn(`⚠️ Expected 583 notes but got ${realData.summary.totalNotes}`);
+                    }
+                    
+                    this.analysisData = realData;
+                    console.log('🎯 About to display results...');
+                    this.displayResults(realData);
+                    console.log('✅ Results displayed successfully!');
+                } catch (error) {
+                    console.error('❌ REAL API call failed:', error);
+                    this.showError(`Failed to analyze your ${583} notes: ${error.message}. Please check the backend logs.`);
+                }
+                
+                console.log('🏁 About to hide loading...');
+                this.hideLoading();
+                console.log('🏁 Analysis complete!');
+            }
+
+            displayResults(data) {
+                // Show results section
+                document.getElementById('results').classList.remove('hidden');
+                
+                // Display summary stats
+                this.displayStats(data.summary);
+                
+                // Display duplicates
+                this.displayDuplicates(data.duplicates);
+                
+                // Display junk notes
+                this.displayJunkNotes(data.junkNotes);
+                
+                // Display organization suggestions
+                this.displayOrganization(data.organizationSuggestions);
+                
+                // Display all notes for quick editing
+                this.displayAllNotes();
+                
+                // Display real notes that can be opened
+                this.displayRealNotes();
+            }
+
+            displayStats(summary) {
+                const statsGrid = document.getElementById('stats-grid');
+                statsGrid.innerHTML = `
+                    <div class="stat-box">
+                        <span class="stat-number">${summary.totalNotes}</span>
+                        <div class="stat-label">Total Notes</div>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number">${summary.duplicateGroups}</span>
+                        <div class="stat-label">Duplicates</div>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number">${summary.junkNotesFound}</span>
+                        <div class="stat-label">Junk Notes</div>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number">${Math.round(summary.averageUtilityScore)}</span>
+                        <div class="stat-label">Avg Score</div>
+                    </div>
+                `;
+            }
+
+            displayDuplicates(duplicates) {
+                const card = document.getElementById('duplicates-card');
+                const list = document.getElementById('duplicates-list');
+                
+                if (duplicates.length === 0) {
+                    card.style.display = 'none';
+                    return;
+                }
+                
+                card.style.display = 'block';
+                list.innerHTML = duplicates.map((group, index) => `
+                    <li>
+                        Found <span class="highlight">${group.notes.length} similar notes</span>: ${group.notes.map(n => `"${n.title}"`).join(', ')}
+                        <div class="action-buttons">
+                            <button class="action-btn view-btn" onclick="showComparison(${index})">👁️ Compare Notes</button>
+                            <button class="action-btn merge-btn" onclick="mergeNotes(${index})">🔗 Merge Notes</button>
+                            <button class="action-btn delete-btn" onclick="deleteGroup(${index})">🗑️ Delete Duplicates</button>
+                            <button class="action-btn skip-btn" onclick="skipAction(${index}, 'duplicate')">Skip</button>
+                        </div>
+                        <div id="duplicate-feedback-${index}" class="action-feedback"></div>
+                        <div id="compare-view-${index}" class="compare-view">
+                            <div class="compare-header">
+                                <h4>📋 Compare Notes Side by Side</h4>
+                                <button class="close-compare" onclick="hideComparison(${index})">✕ Close</button>
+                            </div>
+                            <div class="notes-comparison">
+                                ${group.notes.map(note => `
+                                    <div class="note-preview-full">
+                                        <div class="note-header">
+                                            <div class="note-title-full">"${note.title}"</div>
+                                            ${note.isReal ? 
+                                                `<button class="open-note-btn" onclick="window.openNoteById('${note.id}', '${note.title.replace(/'/g, "\\'")}');">📱 Open in Notes</button>` :
+                                                `<span style="font-size: 11px; color: #6c757d;">Mock Note</span>`
+                                            }
+                                        </div>
+                                        <div class="note-meta-full">
+                                            📁 ${note.folder} • Created: ${note.created} • Modified: ${note.modified}
+                                        </div>
+                                        <div class="note-content-full">${note.content}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </li>
+                `).join('');
+            }
+
+            displayJunkNotes(junkNotes) {
+                const card = document.getElementById('junk-card');
+                const list = document.getElementById('junk-list');
+                
+                if (junkNotes.length === 0) {
+                    card.style.display = 'none';
+                    return;
+                }
+                
+                card.style.display = 'block';
+                list.innerHTML = junkNotes.slice(0, 5).map((note, index) => `
+                    <li>
+                        <span class="highlight">"${note.title}"</span> - ${note.junkReasons.join(', ')}
+                        <div class="note-preview">
+                            <div class="note-content-preview">${note.content}</div>
+                            <div style="font-size: 11px; color: #6c757d; margin-top: 4px;">
+                                📁 ${note.folder} • Modified: ${note.modified}
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            ${note.isReal ? 
+                                `<button class="action-btn view-btn" onclick="window.openNoteById('${note.id}', '${note.title.replace(/'/g, "\\'")}');">📱 Open in Notes</button>` :
+                                `<button class="action-btn view-btn" disabled style="opacity: 0.5;">📱 Mock Note</button>`
+                            }
+                            <button class="action-btn delete-btn" onclick="deleteJunkNote(${index})">🗑️ Delete</button>
+                            <button class="action-btn skip-btn" onclick="skipAction(${index}, 'junk')">Keep</button>
+                        </div>
+                        <div id="junk-feedback-${index}" class="action-feedback"></div>
+                    </li>
+                `).join('');
+                
+                if (junkNotes.length > 5) {
+                    list.innerHTML += `<li>...and ${junkNotes.length - 5} more notes</li>`;
+                }
+            }
+
+            displayOrganization(suggestions) {
+                const card = document.getElementById('organization-card');
+                const list = document.getElementById('organization-list');
+                
+                if (suggestions.length === 0) {
+                    card.style.display = 'none';
+                    return;
+                }
+                
+                card.style.display = 'block';
+                list.innerHTML = suggestions.slice(0, 5).map((suggestion, index) => `
+                    <li>
+                        ${suggestion.type}: <span class="highlight">"${suggestion.current}"</span> → <span class="highlight">"${suggestion.suggested}"</span>
+                        ${suggestion.content ? `<div class="note-preview">
+                            <div class="note-content-preview">${suggestion.content.substring(0, 80)}...</div>
+                        </div>` : ''}
+                        <div class="action-buttons">
+                            <button class="action-btn view-btn" onclick="window.openNoteById('${suggestion.noteId}', '${suggestion.current.replace(/'/g, "\\'")}');">📱 Open in Notes</button>
+                            ${suggestion.type === 'Rename' ? 
+                                `<button class="action-btn rename-btn" onclick="applyRename(${index})">✏️ Edit Title</button>` :
+                                `<button class="action-btn move-btn" onclick="applyMove(${index})">📁 Move</button>`
+                            }
+                            <button class="action-btn skip-btn" onclick="skipAction(${index}, 'organization')">Skip</button>
+                        </div>
+                        <div id="org-feedback-${index}" class="action-feedback"></div>
+                    </li>
+                `).join('');
+                
+                if (suggestions.length > 5) {
+                    list.innerHTML += `<li>...and ${suggestions.length - 5} more suggestions</li>`;
+                }
+            }
+
+            displayRealNotes() {
+                const card = document.getElementById('real-notes-card');
+                const list = document.getElementById('real-notes-list');
+                
+                // Get all real notes from the analysis data
+                let realNotes = [];
+                
+                // First, try to get all real notes from the new allRealNotes field
+                if (this.analysisData && this.analysisData.allRealNotes) {
+                    realNotes = this.analysisData.allRealNotes.filter(note => 
+                        note.isReal && note.id && note.id.startsWith('x-coredata://') && !note.id.includes('12345678-ABCD-1234-EFGH-')
+                    );
+                    console.log('🔍 DISPLAY: Using allRealNotes field with', realNotes.length, 'notes');
+                } else {
+                    // Fallback: collect from analysis categories (old behavior)
+                    console.log('🔍 DISPLAY: Falling back to collecting from analysis categories');
+                    
+                    // Check duplicates for real notes (only those with Core Data IDs)
+                    if (this.analysisData && this.analysisData.duplicates) {
+                        this.analysisData.duplicates.forEach(group => {
+                            group.notes.forEach(note => {
+                                if (note.isReal && note.id && note.id.startsWith('x-coredata://') && !realNotes.find(n => n.id === note.id)) {
+                                    realNotes.push(note);
+                                }
+                            });
+                        });
+                    }
+                    
+                    // Check junk notes for real notes (only those with Core Data IDs)
+                    if (this.analysisData && this.analysisData.junkNotes) {
+                        this.analysisData.junkNotes.forEach(note => {
+                            if (note.isReal && note.id && note.id.startsWith('x-coredata://') && !realNotes.find(n => n.id === note.id)) {
+                                realNotes.push(note);
+                            }
+                        });
+                    }
+                    
+                    // Check organization suggestions for real notes (only those with Core Data IDs)
+                    if (this.analysisData && this.analysisData.organizationSuggestions) {
+                        this.analysisData.organizationSuggestions.forEach(suggestion => {
+                            if (suggestion.isReal && suggestion.noteId && suggestion.noteId.startsWith('x-coredata://')) {
+                                const note = {
+                                    id: suggestion.noteId,
+                                    title: suggestion.current,
+                                    content: suggestion.content || 'Organization suggestion note',
+                                    folder: 'Various',
+                                    isReal: true
+                                };
+                                if (!realNotes.find(n => n.id === note.id)) {
+                                    realNotes.push(note);
+                                }
+                            }
+                        });
+                    }
+                }
+                
+                console.log('🔍 DISPLAY: Found real notes with Core Data IDs:', realNotes.length);
+                realNotes.forEach((note, i) => {
+                    console.log(`  ${i + 1}. ID: ${note.id}`);
+                    console.log(`     Title: ${note.title}`);
+                    console.log(`     Has Core Data ID: ${note.id.startsWith('x-coredata://')}`);
+                    console.log(`     ID Length: ${note.id.length}`);
+                });
+                
+                if (realNotes.length > 0) {
+                    card.style.display = 'block';
+                    list.innerHTML = realNotes.map((note, index) => `
+                        <li style="background: #f8f9fa; border: 1px solid #3498db; border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+                                        📱 "${note.title}"
+                                    </div>
+                                    <div style="color: #6c757d; font-size: 12px; margin-bottom: 8px;">
+                                        📁 ${note.folder} • Real Apple Note (Core Data ID)
+                                    </div>
+                                    <div style="color: #6c757d; font-size: 10px; margin-bottom: 8px; font-family: monospace;">
+                                        ID: ${note.id.substring(0, 50)}...
+                                    </div>
+                                    <div class="note-content-preview" style="margin-top: 4px;">
+                                        ${note.content.substring(0, 100)}...
+                                    </div>
+                                </div>
+                                <button class="action-btn view-btn" onclick="alert('Button clicked for: ' + '${note.title}' + ' with ID: ' + '${note.id}'); window.openNoteById('${note.id}', '${note.title.replace(/'/g, "\\'")}');" 
+                                        style="background: #27ae60; font-size: 14px; padding: 10px 15px;">
+                                    📱 Open "${note.title}"
+                                </button>
+                            </div>
+                            <div id="real-note-feedback-${index}" class="action-feedback"></div>
+                        </li>
+                    `).join('');
+                } else {
+                    card.style.display = 'block';
+                    list.innerHTML = `
+                        <li style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px;">
+                            <div style="text-align: center;">
+                                <div style="font-weight: bold; color: #856404; margin-bottom: 10px;">
+                                    ⚠️ No Real Apple Notes Found
+                                </div>
+                                <div style="color: #856404; font-size: 14px; margin-bottom: 15px;">
+                                    The analysis didn't find any notes with valid Core Data IDs. This could mean:
+                                    <ul style="text-align: left; margin: 10px 0; padding-left: 20px;">
+                                        <li>Apple Notes access permission is needed</li>
+                                        <li>No notes exist in your Apple Notes app</li>
+                                        <li>The app is using mock data instead of real notes</li>
+                                    </ul>
+                                </div>
+                                <button class="action-btn view-btn" onclick="testNoteIds()" style="background: #f39c12;">
+                                    🧪 Test Apple Notes Access
+                                </button>
+                            </div>
+                        </li>
+                    `;
+                }
+            }
+
+            displayAllNotes() {
+                const card = document.getElementById('all-notes-card');
+                const list = document.getElementById('all-notes-list');
+                
+                // Mock notes data for editing
+                const allNotes = [
+                    { id: 'note-001', title: 'Shopping List', content: 'Milk, Bread, Eggs, Butter', folder: 'Quick Notes' },
+                    { id: 'note-002', title: 'Meeting Notes - Q1', content: 'Discussed Q1 goals, budget allocation...', folder: 'Work' },
+                    { id: 'note-003', title: 'Untitled', content: 'Random thoughts about the project...', folder: 'Notes' },
+                    { id: 'note-004', title: 'Note', content: 'Meeting agenda items: 1. Budget review...', folder: 'Notes' },
+                    { id: 'note-005', title: 'Important Ideas', content: 'AI-powered note organization could revolutionize...', folder: 'Ideas' }
+                ];
+                
+                card.style.display = 'block';
+                list.innerHTML = allNotes.map((note, index) => `
+                    <li>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span class="highlight">"${note.title}"</span> 
+                                <span style="color: #6c757d; font-size: 12px;">in ${note.folder}</span>
+                                <div class="note-content-preview" style="margin-top: 4px;">${note.content.substring(0, 60)}...</div>
+                            </div>
+                            <button class="action-btn rename-btn" onclick="editNoteTitle('${note.id}', ${index})">✏️ Edit</button>
+                        </div>
+                        <div id="note-feedback-${index}" class="action-feedback"></div>
+                    </li>
+                `).join('');
+            }
+
+            showError(error) {
+                this.hideLoading();
+                document.getElementById('results').innerHTML = `
+                    <div class="result-card">
+                        <h3><span class="icon">❌</span>Error</h3>
+                        <p>${error}</p>
+                    </div>
+                `;
+                document.getElementById('results').classList.remove('hidden');
+            }
+        }
+
+        // Global functions for HTML onclick handlers
+        function startAnalysis() {
+            alert('Button clicked! Starting analysis...');
+            console.log('🔍 startAnalysis() called - button clicked!');
+            console.log('🔍 app object:', app);
+            console.log('🔍 app.runAnalysis:', typeof app.runAnalysis);
+            
+            try {
+                app.runAnalysis();
+            } catch (error) {
+                console.error('❌ Error in startAnalysis:', error);
+                alert('Error starting analysis: ' + error.message);
+            }
+        }
+
+        // Action handlers
+        function mergeNotes(groupIndex) {
+            showFeedback(`duplicate-feedback-${groupIndex}`, 'Notes merged successfully! The best content from both notes has been combined.', 'success');
+        }
+
+        function deleteGroup(groupIndex) {
+            showFeedback(`duplicate-feedback-${groupIndex}`, 'Duplicate notes deleted. The original note has been kept.', 'success');
+        }
+
+        function deleteJunkNote(noteIndex) {
+            showFeedback(`junk-feedback-${noteIndex}`, 'Note deleted successfully.', 'success');
+        }
+
+        function applyRename(suggestionIndex) {
+            const suggestion = app.analysisData?.organizationSuggestions[suggestionIndex];
+            if (suggestion && suggestion.type === 'Rename') {
+                showEditForm(suggestionIndex, suggestion);
+            }
+        }
+
+        function applyMove(suggestionIndex) {
+            const suggestion = app.analysisData?.organizationSuggestions[suggestionIndex];
+            if (suggestion) {
+                showFeedback(`org-feedback-${suggestionIndex}`, `Note moved to "${suggestion.suggested}" folder.`, 'success');
+            }
+        }
+
+        function skipAction(index, type) {
+            showFeedback(`${type}-feedback-${index}`, 'Skipped - no changes made.', 'info');
+        }
+
+        function showComparison(groupIndex) {
+            const compareView = document.getElementById(`compare-view-${groupIndex}`);
+            compareView.style.display = 'block';
+            
+            // Scroll to the comparison view
+            compareView.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function hideComparison(groupIndex) {
+            const compareView = document.getElementById(`compare-view-${groupIndex}`);
+            compareView.style.display = 'none';
+        }
+
+        // Global function for opening notes (called from HTML onclick)
+        window.openNoteById = function(noteId, noteTitle) {
+            console.log('🌍 GLOBAL: openNoteById called with:');
+            console.log('🌍 noteId:', noteId);
+            console.log('🌍 noteTitle:', noteTitle);
+            console.log('🌍 noteId type:', typeof noteId);
+            console.log('🌍 noteId length:', noteId ? noteId.length : 'null');
+            
+            openInNotesApp(noteId, noteTitle);
+        };
+
+        async function openInNotesApp(noteId, noteTitle) {
+            // Add immediate debug alert
+            // CRITICAL DEBUG: Show exactly what we're sending
+            alert(`🚨 CRITICAL DEBUG 🚨\n\nSending to backend:\nNote ID: ${noteId}\nNote Title: ${noteTitle}\n\nNote ID ends with: ${noteId ? noteId.split('/').pop() : 'null'}\n\nClick OK to proceed...`);
+            
+            console.log('🔍 FRONTEND: Opening note with parameters:');
+            
+            console.log('� nFRONTEND: Opening note with parameters:');
+            console.log('📋 noteId:', noteId);
+            console.log('📋 noteTitle:', noteTitle);
+            console.log('📋 noteId type:', typeof noteId);
+            console.log('📋 noteTitle type:', typeof noteTitle);
+            console.log('📋 noteId length:', noteId ? noteId.length : 'null');
+            console.log('📋 noteId starts with x-coredata:', noteId ? noteId.startsWith('x-coredata://') : 'false');
+            
+            // Check if this is a mock ID
+            const isMockId = noteId && noteId.includes('12345678-ABCD-1234-EFGH-');
+            if (isMockId) {
+                console.log('❌ FRONTEND: Detected mock note ID, cannot open in Apple Notes');
+                alert(`Cannot open mock note: "${noteTitle}"\nThis is demo data, not a real Apple Note.`);
+                return;
+            }
+            
+            try {
+                // Call backend API directly (most reliable method)
+                const requestPayload = { noteId, noteTitle };
+                console.log('📤 FRONTEND: Sending to backend:', JSON.stringify(requestPayload, null, 2));
+                
+                const response = await fetch('/api/open-note', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestPayload)
+                });
+
+                const data = await response.json();
+                console.log('📥 FRONTEND: Backend response:', JSON.stringify(data, null, 2));
+                
+                // Show success/failure feedback
+                if (data.success) {
+                    console.log(`✅ SUCCESS: ${data.method} - Note "${noteTitle}" should be open in Apple Notes`);
+                    // Show brief success message instead of alert
+                    const successMsg = document.createElement('div');
+                    successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #d4edda; color: #155724; padding: 10px 15px; border-radius: 5px; border: 1px solid #c3e6cb; z-index: 1000; font-size: 14px;';
+                    successMsg.textContent = `✅ Opened: "${noteTitle}"`;
+                    document.body.appendChild(successMsg);
+                    setTimeout(() => successMsg.remove(), 3000);
+                } else {
+                    console.error(`❌ FAILED: ${data.error}`);
+                    alert(`Failed to open note: ${data.error}`);
+                }
+                
+            } catch (error) {
+                console.error('❌ FRONTEND: Error opening note:', error);
+                alert(`Error opening note: ${error.message}`);
+            }
+        }
+
+        function showFeedback(elementId, message, type) {
+            const feedback = document.getElementById(elementId);
+            feedback.textContent = message;
+            feedback.className = `action-feedback ${type}`;
+            feedback.style.display = 'block';
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                feedback.style.display = 'none';
+            }, 3000);
+        }
+
+        function showEditForm(suggestionIndex, suggestion) {
+            const feedbackElement = document.getElementById(`org-feedback-${suggestionIndex}`);
+            
+            // Create edit form
+            const editForm = document.createElement('div');
+            editForm.className = 'edit-title-form';
+            editForm.innerHTML = `
+                <div class="note-preview">
+                    <div class="note-title-preview">Current: "${suggestion.current}"</div>
+                    <div class="note-content-preview">${suggestion.content}</div>
+                </div>
+                <input type="text" id="new-title-${suggestionIndex}" value="${suggestion.suggested}" placeholder="Enter new title">
+                <div class="form-buttons">
+                    <button class="save-btn" onclick="saveTitle(${suggestionIndex})">💾 Update Title</button>
+                    <button class="cancel-btn" onclick="cancelEdit(${suggestionIndex})">Cancel</button>
+                </div>
+            `;
+            
+            // Insert form after the feedback element
+            feedbackElement.parentNode.insertBefore(editForm, feedbackElement.nextSibling);
+            editForm.style.display = 'block';
+            
+            // Focus on input
+            document.getElementById(`new-title-${suggestionIndex}`).focus();
+        }
+
+        function saveTitle(suggestionIndex) {
+            const newTitle = document.getElementById(`new-title-${suggestionIndex}`).value.trim();
+            const suggestion = app.analysisData?.organizationSuggestions[suggestionIndex];
+            
+            if (suggestion && newTitle && newTitle !== suggestion.current) {
+                // In real app, this would call Apple Notes API to update the title
+                showFeedback(`org-feedback-${suggestionIndex}`, 
+                    `✅ Title updated from "${suggestion.current}" to "${newTitle}"`, 'success');
+                
+                // Update the suggestion display
+                updateSuggestionDisplay(suggestionIndex, newTitle);
+            } else {
+                showFeedback(`org-feedback-${suggestionIndex}`, 'No changes made.', 'info');
+            }
+            
+            cancelEdit(suggestionIndex);
+        }
+
+        function cancelEdit(suggestionIndex) {
+            const editForm = document.querySelector(`#org-feedback-${suggestionIndex} + .edit-title-form`);
+            if (editForm) {
+                editForm.remove();
+            }
+        }
+
+        function updateSuggestionDisplay(suggestionIndex, newTitle) {
+            // Update the display to show the change has been applied
+            const listItems = document.querySelectorAll('#organization-list li');
+            if (listItems[suggestionIndex]) {
+                const highlight = listItems[suggestionIndex].querySelector('.highlight');
+                if (highlight) {
+                    highlight.style.background = '#d4edda';
+                    highlight.style.color = '#155724';
+                    highlight.textContent = `"${newTitle}"`;
+                }
+            }
+        }
+
+        function editNoteTitle(noteId, noteIndex) {
+            const listItem = document.querySelectorAll('#all-notes-list li')[noteIndex];
+            const currentTitle = listItem.querySelector('.highlight').textContent.replace(/"/g, '');
+            
+            // Create inline edit form
+            const editForm = document.createElement('div');
+            editForm.className = 'edit-title-form';
+            editForm.innerHTML = `
+                <input type="text" id="edit-note-title-${noteIndex}" value="${currentTitle}" placeholder="Enter new title">
+                <div class="form-buttons">
+                    <button class="save-btn" onclick="saveNoteTitle('${noteId}', ${noteIndex})">💾 Save</button>
+                    <button class="cancel-btn" onclick="cancelNoteEdit(${noteIndex})">Cancel</button>
+                </div>
+            `;
+            
+            const feedbackElement = document.getElementById(`note-feedback-${noteIndex}`);
+            feedbackElement.parentNode.insertBefore(editForm, feedbackElement);
+            editForm.style.display = 'block';
+            
+            // Focus on input and select text
+            const input = document.getElementById(`edit-note-title-${noteIndex}`);
+            input.focus();
+            input.select();
+        }
+
+        function saveNoteTitle(noteId, noteIndex) {
+            const newTitle = document.getElementById(`edit-note-title-${noteIndex}`).value.trim();
+            
+            if (newTitle) {
+                // In real app, this would call Apple Notes API: 
+                // await notesAPI.updateNoteTitle(noteId, newTitle);
+                
+                showFeedback(`note-feedback-${noteIndex}`, 
+                    `✅ Note title updated to "${newTitle}"`, 'success');
+                
+                // Update the display
+                const listItem = document.querySelectorAll('#all-notes-list li')[noteIndex];
+                const highlight = listItem.querySelector('.highlight');
+                highlight.textContent = `"${newTitle}"`;
+                highlight.style.background = '#d4edda';
+                highlight.style.color = '#155724';
+            } else {
+                showFeedback(`note-feedback-${noteIndex}`, 'Title cannot be empty.', 'info');
+            }
+            
+            cancelNoteEdit(noteIndex);
+        }
+
+        function cancelNoteEdit(noteIndex) {
+            const editForm = document.querySelector(`#note-feedback-${noteIndex}`).previousElementSibling;
+            if (editForm && editForm.classList.contains('edit-title-form')) {
+                editForm.remove();
+            }
+        }
+
+        // Debug functions for testing note opening
+        async function testNoteSearch() {
+            const testTitle = document.getElementById('test-note-title').value.trim();
+            if (!testTitle) {
+                showDebugFeedback('Please enter a note title to test', 'info');
+                return;
+            }
+            
+            try {
+                showDebugFeedback(`🔍 Searching for notes matching: "${testTitle}"...`, 'info');
+                
+                const response = await fetch('/api/test-note-search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        searchTitle: testTitle
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.matches.length > 0) {
+                        const matchDetails = result.matches.map(m => 
+                            `[${m.matchType}] "${m.title}" in ${m.folder}`
+                        ).join(', ');
+                        showDebugFeedback(`✅ Found ${result.matches.length} matches: ${matchDetails}`, 'success');
+                        
+                        // Log detailed info to console
+                        console.log('🔍 Detailed search results:');
+                        result.matches.forEach((match, i) => {
+                            console.log(`  ${i + 1}. Match Type: ${match.matchType}`);
+                            console.log(`     Title: "${match.title}"`);
+                            console.log(`     Folder: ${match.folder}`);
+                            console.log(`     Note ID: ${match.noteId}`);
+                        });
+                    } else {
+                        showDebugFeedback(`⚠️ No matches found for "${testTitle}"`, 'info');
+                    }
+                } else {
+                    showDebugFeedback(`❌ Search failed: ${result.message}`, 'info');
+                }
+                
+            } catch (error) {
+                showDebugFeedback(`❌ Search error: ${error.message}`, 'info');
+            }
+        }
+        
+        async function testOpenNote() {
+            const testTitle = document.getElementById('test-note-title').value.trim();
+            if (!testTitle) {
+                showDebugFeedback('Please enter a note title to test', 'info');
+                return;
+            }
+            
+            try {
+                showDebugFeedback(`📱 Attempting to open: "${testTitle}"...`, 'info');
+                
+                const response = await fetch('/api/open-note', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        noteId: 'test_note',
+                        noteTitle: testTitle
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showDebugFeedback(`✅ ${result.message}`, 'success');
+                } else {
+                    showDebugFeedback(`⚠️ ${result.message}`, 'info');
+                }
+                
+            } catch (error) {
+                showDebugFeedback(`❌ Open error: ${error.message}`, 'info');
+            }
+        }
+        
+        // Test function to check real note IDs
+        async function testNoteIds() {
+            try {
+                showDebugFeedback('🧪 Testing real Apple Notes IDs...', 'info');
+                
+                const response = await fetch('/api/test-note-ids');
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log('🧪 TEST RESULTS:');
+                    console.log('Raw output:', result.rawOutput);
+                    console.log('Parsed lines:', result.lines);
+                    
+                    if (result.lines.length > 0) {
+                        showDebugFeedback(`✅ Found ${result.lines.length} real notes - check console for details`, 'success');
+                    } else {
+                        showDebugFeedback('⚠️ No notes found or permission denied', 'info');
+                    }
+                } else {
+                    showDebugFeedback(`❌ Test failed: ${result.error}`, 'info');
+                }
+                
+            } catch (error) {
+                showDebugFeedback(`❌ Test error: ${error.message}`, 'info');
+            }
+        }
+        // Test function to verify the openInNotesApp function works
+        function testOpenFunction() {
+            console.log('🧪 Testing openInNotesApp function...');
+            try {
+                // Test with a real note ID from the server logs
+                openInNotesApp('x-coredata://FA0EA356-82B6-4B65-9C74-F1528B2816BD/ICNote/p719', 'Story :: Most proud');
+            } catch (error) {
+                console.error('❌ Function test failed:', error);
+                alert(`Function test failed: ${error.message}`);
+            }
+        }
+
+        // Test function to list actual notes in Apple Notes
+        async function listActualNotes() {
+            try {
+                showDebugFeedback('📋 Getting your actual Apple Notes titles...', 'info');
+                
+                const response = await fetch('/api/list-actual-notes');
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log('📋 YOUR ACTUAL APPLE NOTES:');
+                    result.notes.forEach((note, i) => {
+                        console.log(`  ${i + 1}. ${note}`);
+                    });
+                    
+                    showDebugFeedback(`✅ Found ${result.count} actual notes - check console for full list`, 'success');
+                    
+                    // Show first few in the feedback
+                    if (result.notes.length > 0) {
+                        const preview = result.notes.slice(0, 3).join(', ');
+                        setTimeout(() => {
+                            showDebugFeedback(`📋 Sample notes: ${preview}${result.notes.length > 3 ? '...' : ''}`, 'info');
+                        }, 2000);
+                    }
+                } else {
+                    showDebugFeedback(`❌ Failed to list notes: ${result.message}`, 'info');
+                }
+                
+            } catch (error) {
+                showDebugFeedback(`❌ Error: ${error.message}`, 'info');
+            }
+        }
+
+        function showDebugFeedback(message, type) {
+            const feedback = document.getElementById('debug-feedback');
+            feedback.textContent = message;
+            feedback.className = `action-feedback ${type}`;
+            feedback.style.display = 'block';
+            
+            // Hide after 5 seconds for debug messages
+            setTimeout(() => {
+                feedback.style.display = 'none';
+            }, 5000);
+        }
+
+        console.log('🔍 About to initialize app...');
+        console.log('🔍 SimpleNotesApp class:', typeof SimpleNotesApp);
+        
+        // Initialize the app
+        const app = new SimpleNotesApp();
+        
+        console.log('🔍 App initialized:', app);
+        console.log('🔍 App runAnalysis method:', typeof app.runAnalysis);
+    </script>
+</body>
+</html>

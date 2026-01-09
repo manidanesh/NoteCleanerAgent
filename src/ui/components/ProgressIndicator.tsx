@@ -7,10 +7,18 @@ import {
 } from 'react-native';
 
 interface ProgressIndicatorProps {
-  progress: number; // 0-100
-  currentStep: string;
+  // Original interface
+  progress?: number; // 0-100
+  currentStep?: string;
   estimatedTimeRemaining?: number; // seconds
   showDetails?: boolean;
+  
+  // Alternative interface for step-based progress
+  current?: number;
+  total?: number;
+  showPercentage?: boolean;
+  label?: string;
+  size?: string;
 }
 
 export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
@@ -18,7 +26,15 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   currentStep,
   estimatedTimeRemaining,
   showDetails = true,
+  current,
+  total,
+  showPercentage = false,
+  label,
+  size,
 }) => {
+  // Calculate progress from current/total if provided
+  const calculatedProgress = current && total ? (current / total) * 100 : progress || 0;
+  const displayStep = label || currentStep || `Step ${current || 1} of ${total || 1}`;
   const formatTimeRemaining = (seconds: number): string => {
     if (seconds < 60) {
       return `${Math.round(seconds)}s remaining`;
@@ -36,8 +52,10 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
     <View style={styles.container}>
       {/* Progress Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Processing Notes</Text>
-        <Text style={styles.percentage}>{Math.round(progress)}%</Text>
+        <Text style={styles.title}>{label || 'Processing Notes'}</Text>
+        {showPercentage && (
+          <Text style={styles.percentage}>{Math.round(calculatedProgress)}%</Text>
+        )}
       </View>
 
       {/* Progress Bar */}
@@ -46,7 +64,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
           <Animated.View
             style={[
               styles.progressBarFill,
-              { width: `${Math.max(0, Math.min(100, progress))}%` }
+              { width: `${Math.max(0, Math.min(100, calculatedProgress))}%` }
             ]}
           />
         </View>
@@ -55,7 +73,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
       {/* Progress Details */}
       {showDetails && (
         <View style={styles.details}>
-          <Text style={styles.currentStep}>{currentStep}</Text>
+          <Text style={styles.currentStep}>{displayStep}</Text>
           {estimatedTimeRemaining !== undefined && estimatedTimeRemaining > 0 && (
             <Text style={styles.timeRemaining}>
               {formatTimeRemaining(estimatedTimeRemaining)}
@@ -68,28 +86,28 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
       <View style={styles.stepsContainer}>
         <ProcessingStep
           title="Indexing"
-          isActive={currentStep.toLowerCase().includes('index')}
-          isComplete={progress > 20}
+          isActive={currentStep?.toLowerCase().includes('index') || false}
+          isComplete={(progress || 0) > 20}
         />
         <ProcessingStep
           title="Extraction"
-          isActive={currentStep.toLowerCase().includes('extract')}
-          isComplete={progress > 40}
+          isActive={currentStep?.toLowerCase().includes('extract') || false}
+          isComplete={(progress || 0) > 40}
         />
         <ProcessingStep
           title="Scoring"
-          isActive={currentStep.toLowerCase().includes('scor')}
-          isComplete={progress > 60}
+          isActive={currentStep?.toLowerCase().includes('scor') || false}
+          isComplete={(progress || 0) > 60}
         />
         <ProcessingStep
           title="Detection"
-          isActive={currentStep.toLowerCase().includes('detect')}
-          isComplete={progress > 80}
+          isActive={currentStep?.toLowerCase().includes('detect') || false}
+          isComplete={(progress || 0) > 80}
         />
         <ProcessingStep
           title="Recommendations"
-          isActive={currentStep.toLowerCase().includes('recommend')}
-          isComplete={progress >= 100}
+          isActive={currentStep?.toLowerCase().includes('recommend') || false}
+          isComplete={(progress || 0) >= 100}
         />
       </View>
     </View>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug HTML Generation</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .button { background: #3498db; color: white; padding: 10px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug HTML Generation</h1>
+    
+    <div id="generated-html"></div>
+    <div id="actual-buttons"></div>
+    
+    <script>
+        // Test data from server
+        const testNotes = [
+            {
+                id: 'x-coredata://FA0EA356-82B6-4B65-9C74-F1528B2816BD/ICNote/p1100',
+                title: 'List of courses for AI',
+                folder: 'AI for product managers'
+            },
+            {
+                id: 'x-coredata://FA0EA356-82B6-4B65-9C74-F1528B2816BD/ICNote/p719',
+                title: 'Story :: Most proud',
+                folder: 'Amazon Feb 2022'
+            },
+            {
+                id: 'x-coredata://FA0EA356-82B6-4B65-9C74-F1528B2816BD/ICNote/p90',
+                title: 'Amazon Interview - Youtube',
+                folder: 'Amazon'
+            }
+        ];
+        
+        // Debug function
+        window.openNoteById = function(noteId, noteTitle) {
+            alert(`CLICKED:\nID: ${noteId}\nTitle: ${noteTitle}\nID ends with: ${noteId.split('/').pop()}`);
+        };
+        
+        // Generate HTML exactly like the main app
+        const htmlOutput = document.getElementById('generated-html');
+        const buttonsOutput = document.getElementById('actual-buttons');
+        
+        // Show the generated HTML as text
+        const generatedHTML = testNotes.map((note, index) => {
+            const buttonCode = `onclick="window.openNoteById('${note.id}', '${note.title.replace(/'/g, "\\'")}');"`;
+            return `
+                <div class="debug">
+                    <strong>Note ${index + 1}:</strong><br>
+                    ID: ${note.id}<br>
+                    Title: ${note.title}<br>
+                    Generated onclick: ${buttonCode}
+                </div>
+            `;
+        }).join('');
+        
+        htmlOutput.innerHTML = generatedHTML;
+        
+        // Generate actual clickable buttons
+        const actualButtons = testNotes.map((note, index) => {
+            return `
+                <button class="button" onclick="window.openNoteById('${note.id}', '${note.title.replace(/'/g, "\\'")}');">
+                    📱 Open "${note.title}" (ID: ${note.id.split('/').pop()})
+                </button>
+            `;
+        }).join('');
+        
+        buttonsOutput.innerHTML = `
+            <h3>Click these buttons to test:</h3>
+            ${actualButtons}
+        `;
+        
+        console.log('🔍 Debug page loaded. Check the generated HTML and click buttons to test.');
+    </script>
+</body>
+</html>

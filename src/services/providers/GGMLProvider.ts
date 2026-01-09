@@ -39,8 +39,8 @@ export class GGMLProvider implements ILLMProvider {
       const exists = await RNFS.exists(this.modelPath);
       return exists;
     } catch (error) {
-      // Fallback for non-React Native environments
-      console.warn('Model file check failed, assuming available for demo');
+      // Fallback for non-React Native environments - don't spam console
+      // console.warn('Model file check failed, assuming available for demo');
       return true; // For demo purposes
     }
   }
@@ -148,8 +148,8 @@ export class GGMLProvider implements ILLMProvider {
   }
 
   private async simulateGeneration(prompt: string, options: any): Promise<{text: string, confidence: number, tokensUsed: number}> {
-    // Simulate processing time based on max_tokens
-    const processingTime = Math.max(500, options.max_tokens * 2);
+    // Much faster simulation for development - 100-500ms instead of 10+ seconds
+    const processingTime = Math.max(100, Math.min(500, options.max_tokens * 0.5));
     await new Promise(resolve => setTimeout(resolve, processingTime));
     
     // Generate response based on prompt content

@@ -91,6 +91,14 @@ export class OrganizationAgent {
   }
 
   /**
+   * Initialize the organization agent
+   */
+  async initialize(): Promise<void> {
+    // Initialize any required services or configurations
+    return Promise.resolve();
+  }
+
+  /**
    * Generate organization recommendations for a note
    */
   async generateRecommendations(note: Note, utilityScore: UtilityScore): Promise<Recommendation[]> {
@@ -209,57 +217,60 @@ export class OrganizationAgent {
   }
 
   /**
-   * Generate improved title suggestion using LLM
+   * Generate improved title suggestion using LLM (optimized)
    */
   async generateTitleSuggestion(note: Note, analysis: TitleAnalysis): Promise<TitleSuggestion | null> {
     try {
+      // Use optimized LLM service if available
+      if ((this.llmService as any).optimizationService) {
+        const comprehensiveAnalysis = await (this.llmService as any).optimizationService.requestAnalysis(
+          note,
+          ['title_analysis'],
+          'normal'
+        );
+        
+        if (comprehensiveAnalysis.titleAnalysis?.suggestedTitle) {
+          return {
+            suggestedTitle: comprehensiveAnalysis.titleAnalysis.suggestedTitle,
+            reasoning: comprehensiveAnalysis.titleAnalysis.reasoning || 'LLM-generated title improvement',
+            confidence: 0.8,
+            keywords: []
+          };
+        }
+      }
+
+      // Fallback to direct LLM request with reduced complexity
       const request: LLMRequest = {
         agentId: 'organization-agent',
         requestType: LLMRequestType.TITLE_GENERATION,
         context: 'Generating improved title for note organization',
-        noteContent: note.content.substring(0, 1000),
-        systemPrompt: `You are a note organization expert. Generate descriptive, searchable titles that accurately reflect note content.`,
-        userPrompt: `Generate an improved title for this note:
+        noteContent: note.content.substring(0, 600), // Reduced from 1000
+        systemPrompt: `Generate descriptive, searchable titles (3-8 words).`,
+        userPrompt: `Improve title for: "${note.title}"
+Content: "${note.content.substring(0, 300)}..."
+Issues: ${analysis.issues.join(', ')}
 
-Current title: "${note.title}"
-Content preview: "${note.content.substring(0, 500)}..."
-
-Issues identified: ${analysis.issues.join(', ')}
-
-Requirements:
-- 3-8 words maximum
-- Descriptive and specific
-- Contains searchable keywords
-- Professional and clear
-- Accurately reflects content
-
-Respond with JSON:
-{
-  "title": "suggested title",
-  "reasoning": "brief explanation",
-  "keywords": ["key", "words"],
-  "confidence": 0.85
-}`,
-        maxTokens: 200,
+Respond: TITLE: [suggested title] REASON: [brief explanation]`,
+        maxTokens: 120, // Reduced from 200
         temperature: 0.3
       };
 
       const response = await this.llmService.processRequest(request);
       
-      try {
-        const parsed = JSON.parse(response.response);
-        
-        // Validate the suggestion
-        if (this.validateTitleSuggestion(parsed.title, note)) {
+      // Parse simplified response
+      const titleMatch = response.response.match(/TITLE:\s*(.+?)(?:\s+REASON:|$)/i);
+      const reasonMatch = response.response.match(/REASON:\s*(.+)/i);
+      
+      if (titleMatch) {
+        const suggestedTitle = titleMatch[1].trim().replace(/['"]/g, '');
+        if (this.validateTitleSuggestion(suggestedTitle, note)) {
           return {
-            suggestedTitle: parsed.title,
-            reasoning: parsed.reasoning || 'LLM-generated title improvement',
-            confidence: Math.min(0.95, Math.max(0.3, parsed.confidence || 0.7)),
-            keywords: parsed.keywords || []
+            suggestedTitle,
+            reasoning: reasonMatch ? reasonMatch[1].trim() : 'LLM-generated title improvement',
+            confidence: 0.75,
+            keywords: []
           };
         }
-      } catch (parseError) {
-        console.warn('Failed to parse LLM title suggestion, using fallback');
       }
       
       // Fallback title generation

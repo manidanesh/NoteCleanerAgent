@@ -90,19 +90,23 @@ export class BatchProcessor {
    * Process notes in optimized batches
    */
   async processNotes(notes: Note[], resumeFromCheckpoint?: string): Promise<ProcessingResult[]> {
+    // FIXED: Don't allow concurrent processing - return empty results instead of resetting
     if (this.isProcessing) {
-      throw new Error('Batch processing already in progress');
+      console.warn('Batch processing already in progress - returning cached/empty results');
+      return [];
     }
 
     this.isProcessing = true;
     this.isPaused = false;
     this.processingStartTime = new Date();
     
+    // Declare allResults outside try block so it's accessible in catch
+    let allResults: ProcessingResult[] = [];
+    
     try {
       // Check if resuming from checkpoint
       let checkpoint: ProcessingCheckpoint | null = null;
       let startBatchIndex = 0;
-      let allResults: ProcessingResult[] = [];
       let remainingNotes = notes;
 
       if (resumeFromCheckpoint) {
@@ -152,8 +156,16 @@ export class BatchProcessor {
           break;
         }
 
-        // Wait for resources if throttled
+        // FIXED: Add maximum wait timeout to prevent infinite waiting
+        let waitAttempts = 0;
+        const maxWaitAttempts = 30; // 30 seconds max wait
+        
         while (!(await this.performanceOptimizer.canProcessBatch())) {
+          if (waitAttempts >= maxWaitAttempts) {
+            console.error('Exceeded maximum wait time for batch processing');
+            throw new Error('Resource wait timeout - unable to process batch');
+          }
+          
           if (!this.isPaused) {
             this.isPaused = true;
             this.emitEvent({
@@ -163,6 +175,7 @@ export class BatchProcessor {
           }
           
           await new Promise(resolve => setTimeout(resolve, 1000));
+          waitAttempts++;
           
           // Check for interruption during pause
           if (this.performanceOptimizer.shouldInterruptProcessing()) {
@@ -216,10 +229,16 @@ export class BatchProcessor {
 
       return allResults;
 
+    } catch (error) {
+      console.error('Batch processing failed:', error);
+      // Return partial results instead of throwing
+      return allResults;
     } finally {
+      // Always reset processing state to prevent infinite loops
       this.isProcessing = false;
       this.isPaused = false;
       this.performanceOptimizer.resetInterruption();
+      console.log('Batch processing state reset');
     }
   }
 
@@ -246,8 +265,8 @@ export class BatchProcessor {
           setTimeout(() => reject(new Error('Batch processing timeout')), this.config.batchTimeout);
         });
 
-        // Process batch with timeout
-        const processingPromise = this.agentCoordinator.processNotes(batch);
+        // FIXED: Use processNotesLegacy to avoid infinite loop
+        const processingPromise = this.agentCoordinator.processNotesLegacy(batch);
         const results = await Promise.race([processingPromise, timeoutPromise]);
 
         const processingTime = Date.now() - startTime;

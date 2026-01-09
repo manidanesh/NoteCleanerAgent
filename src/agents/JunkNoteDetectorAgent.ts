@@ -124,6 +124,14 @@ export class JunkNoteDetectorAgent {
   }
 
   /**
+   * Initialize the junk note detector agent
+   */
+  async initialize(): Promise<void> {
+    // Initialize any required services or configurations
+    return Promise.resolve();
+  }
+
+  /**
    * Analyze a note to determine if it's junk
    */
   async analyzeNote(note: Note): Promise<JunkDetectionResult> {
@@ -408,7 +416,8 @@ export class JunkNoteDetectorAgent {
         noteContent: note.content.substring(0, 500),
         systemPrompt: `You are an expert at identifying temporary, outdated, or low-value notes that users typically want to clean up. 
                       Consider notes as "junk" if they are: scratch pads, old shopping lists, expired reminders, 
-                      test content, very short meaningless notes, or completed temporary tasks.`,
+                      test content, very short meaningless notes, or completed temporary tasks.
+                      Your response MUST be a JSON object with "isJunk", "confidence", and "reasoning" fields. Do not include any other text.`,
         userPrompt: `Analyze this note to determine if it should be classified as "junk":
 
 Title: "${note.title}"

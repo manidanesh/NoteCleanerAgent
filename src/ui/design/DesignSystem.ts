@@ -35,7 +35,9 @@ export const Colors = {
   success: '#28a745',
   warning: '#ffc107',
   danger: '#dc3545',
+  error: '#dc3545',  // Alias for danger
   info: '#17a2b8',
+  secondary: '#6c757d',  // Gray secondary color
   
   // Neutral Colors
   white: '#ffffff',
@@ -50,10 +52,23 @@ export const Colors = {
   gray800: '#212529',
   gray900: '#1a1a1a',
   
-  // Background Colors
-  background: '#f8f9fa',
+  // Structured color groups for easier access
+  text: {
+    primary: '#343a40',
+    secondary: '#6c757d',
+    tertiary: '#adb5bd',
+    inverse: '#ffffff',
+  },
+  
+  background: {
+    primary: '#ffffff',
+    secondary: '#f8f9fa',
+    tertiary: '#e9ecef',
+    overlay: 'rgba(0, 0, 0, 0.5)',
+  },
+  
+  border: '#dee2e6',
   surface: '#ffffff',
-  overlay: 'rgba(0, 0, 0, 0.5)',
   
   // High Contrast Mode Colors (Requirement 12.4)
   highContrastText: '#000000',
@@ -68,39 +83,45 @@ export const Typography = {
     fontSize: 28,
     fontWeight: '700' as const,
     lineHeight: 34,
-    color: Colors.gray900,
+    color: Colors.text?.primary || Colors.gray900,
   },
   h2: {
     fontSize: 24,
     fontWeight: '600' as const,
     lineHeight: 30,
-    color: Colors.gray900,
+    color: Colors.text?.primary || Colors.gray900,
   },
   h3: {
     fontSize: 20,
     fontWeight: '600' as const,
     lineHeight: 26,
-    color: Colors.gray900,
+    color: Colors.text?.primary || Colors.gray900,
   },
   h4: {
     fontSize: 18,
     fontWeight: '600' as const,
     lineHeight: 24,
-    color: Colors.gray900,
+    color: Colors.text?.primary || Colors.gray900,
   },
   
-  // Body Text
+  // Body Text (with aliases for common usage)
+  body: {
+    fontSize: 16,
+    fontWeight: '400' as const,
+    lineHeight: 24,
+    color: Colors.text?.primary || Colors.gray700,
+  },
   body1: {
     fontSize: 16,
     fontWeight: '400' as const,
     lineHeight: 24,
-    color: Colors.gray700,
+    color: Colors.text?.primary || Colors.gray700,
   },
   body2: {
     fontSize: 14,
     fontWeight: '400' as const,
     lineHeight: 20,
-    color: Colors.gray600,
+    color: Colors.text?.secondary || Colors.gray600,
   },
   
   // Captions and Labels
@@ -108,13 +129,13 @@ export const Typography = {
     fontSize: 12,
     fontWeight: '400' as const,
     lineHeight: 16,
-    color: Colors.gray500,
+    color: Colors.text?.tertiary || Colors.gray500,
   },
   label: {
     fontSize: 14,
     fontWeight: '500' as const,
     lineHeight: 18,
-    color: Colors.gray700,
+    color: Colors.text?.primary || Colors.gray700,
   },
   
   // Button Text
@@ -129,13 +150,27 @@ export const Typography = {
     fontSize: 18,
     fontWeight: '400' as const,
     lineHeight: 26,
-    color: Colors.gray700,
+    color: Colors.text?.primary || Colors.gray700,
   },
   captionLarge: {
     fontSize: 14,
     fontWeight: '400' as const,
     lineHeight: 18,
-    color: Colors.gray500,
+    color: Colors.text?.tertiary || Colors.gray500,
+  },
+  
+  // Structured typography for easier access
+  sizes: {
+    small: 12,
+    medium: 14,
+    large: 16,
+    xlarge: 18,
+  },
+  
+  weights: {
+    normal: '400' as const,
+    semibold: '600' as const,
+    bold: '700' as const,
   },
 };
 
@@ -148,6 +183,12 @@ export const Spacing = {
   xl: 20,
   xxl: 24,
   xxxl: 32,
+  
+  // Aliases for common usage
+  xsmall: 4,
+  small: 8,
+  medium: 12,
+  large: 16,
 };
 
 // Border Radius
@@ -157,6 +198,10 @@ export const BorderRadius = {
   lg: 12,
   xl: 16,
   round: 50,
+  
+  // Aliases for common usage
+  small: 4,
+  medium: 8,
 };
 
 // Shadow Styles
@@ -440,12 +485,23 @@ export const AccessibilityHints = {
   duplicateGroup: 'Double tap to view all notes in this duplicate group',
 };
 
-export default {
+// Named export for the complete design system
+export const DesignSystem = {
+  // Lowercase aliases for consistency with usage
+  colors: Colors,
+  typography: Typography,
+  spacing: Spacing,
+  borderRadius: BorderRadius,
+  shadows: Shadows,
+  
+  // Keep uppercase for backward compatibility
   Colors,
   Typography,
   Spacing,
   BorderRadius,
   Shadows,
+  
+  // Utility functions
   getUtilityScoreColor,
   getUtilityScoreLabel,
   getUtilityScoreStyle,
@@ -463,3 +519,6 @@ export default {
   AccessibilityLabels,
   AccessibilityHints,
 };
+
+// Default export for convenience
+export default DesignSystem;

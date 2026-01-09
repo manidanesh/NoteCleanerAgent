@@ -667,10 +667,13 @@ export class BulkCleanupService {
     }
     
     // Prioritize by action type and confidence
-    const actionPriority = {
+    const actionPriority: Record<RecommendationAction, number> = {
       [RecommendationAction.DELETE]: 3,
       [RecommendationAction.ARCHIVE]: 2,
-      [RecommendationAction.MERGE_DUPLICATES]: 1
+      [RecommendationAction.MERGE_DUPLICATES]: 1,
+      [RecommendationAction.RENAME]: 1,
+      [RecommendationAction.REVIEW]: 0,
+      [RecommendationAction.KEEP]: 0
     };
     
     return recommendations

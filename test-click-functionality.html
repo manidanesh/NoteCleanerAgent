@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Click Functionality</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-button { 
+            background: #3498db; 
+            color: white; 
+            padding: 15px 25px; 
+            border: none; 
+            border-radius: 5px; 
+            margin: 10px; 
+            cursor: pointer; 
+            font-size: 16px;
+        }
+        .test-button:hover { background: #2980b9; }
+        .result { 
+            margin: 10px 0; 
+            padding: 10px; 
+            border-radius: 5px; 
+            background: #f8f9fa; 
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Click Functionality</h1>
+    
+    <div>
+        <button class="test-button" onclick="testDataAttributes()">
+            📱 Test Data Attributes Method
+        </button>
+        
+        <button class="test-button" onclick="testDirectCall()">
+            🔧 Test Direct Function Call
+        </button>
+        
+        <button class="test-button" onclick="testRealNote()">
+            ⚡ Test Real Note Opening
+        </button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        // Copy the openInNotesApp function from the main app
+        async function openInNotesApp(noteId, noteTitle) {
+            console.log('🔍 FRONTEND: Opening note with parameters:');
+            console.log('📋 noteId:', noteId);
+            console.log('📋 noteTitle:', noteTitle);
+            
+            try {
+                const requestPayload = { noteId, noteTitle };
+                console.log('📤 FRONTEND: Sending to backend:', JSON.stringify(requestPayload, null, 2));
+                
+                const response = await fetch('/api/open-note', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestPayload)
+                });
+
+                const data = await response.json();
+                console.log('📥 FRONTEND: Backend response:', JSON.stringify(data, null, 2));
+                
+                if (data.success) {
+                    console.log(`✅ SUCCESS: ${data.method} - Note "${noteTitle}" should be open in Apple Notes`);
+                    alert(`✅ Successfully opened note: "${noteTitle}" in Apple Notes!`);
+                } else {
+                    console.error(`❌ FAILED: ${data.error}`);
+                    alert(`Failed to open note: ${data.error}`);
+                }
+                
+            } catch (error) {
+                console.error('❌ FRONTEND: Error opening note:', error);
+                alert(`Error opening note: ${error.message}`);
+            }
+        }
+        
+        function testDataAttributes() {
+            const results = document.getElementById('results');
+            
+            // Create a test button with data attributes
+            const testButton = document.createElement('button');
+            testButton.dataset.noteId = 'x-coredata://FA0EA356-82B6-4B65-9C74-F1528B2816BD/ICNote/p1100';
+            testButton.dataset.noteTitle = 'List of courses for AI';
+            testButton.onclick = function() {
+                openInNotesApp(this.dataset.noteId, this.dataset.noteTitle);
+            };
+            testButton.textContent = '📱 Test Note Button';
+            testButton.className = 'test-button';
+            
+            results.innerHTML = '<div class="result">✅ Created test button with data attributes. Click it below:</div>';
+            results.appendChild(testButton);
+        }
+        
+        function testDirectCall() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="result">🔧 Testing direct function call...</div>';
+            
+            // Call the function directly
+            openInNotesApp('x-coredata://FA0EA356-82B6-4B65-9C74-F1528B2816BD/ICNote/p1100', 'List of courses for AI');
+        }
+        
+        function testRealNote() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="result">⚡ Testing with real note from server...</div>';
+            
+            // Use a real note ID from the server response
+            openInNotesApp('x-coredata://FA0EA356-82B6-4B65-9C74-F1528B2816BD/ICNote/p719', 'Story :: Most proud');
+        }
+    </script>
+</body>
+</html>

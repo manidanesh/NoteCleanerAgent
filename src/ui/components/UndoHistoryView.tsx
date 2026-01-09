@@ -423,7 +423,6 @@ const getChangeTypeColor = (changeType: string): string => {
     default: return '#6c757d';
   }
 };
-};
 
 const styles = StyleSheet.create({
   container: {

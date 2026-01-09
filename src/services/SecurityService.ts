@@ -47,6 +47,14 @@ export class SecurityService {
   }
 
   /**
+   * Public initialize method for explicit initialization
+   */
+  public async initialize(): Promise<void> {
+    await this.initializeEncryption();
+    console.log('SecurityService initialized successfully');
+  }
+
+  /**
    * Requirement 13.1: Device-level encryption for cached data
    * Initialize encryption key using device-specific entropy
    */
@@ -66,7 +74,7 @@ export class SecurityService {
         storedKey = CryptoJS.SHA256(keyMaterial).toString();
         
         // Store encrypted key (encrypted with device keychain)
-        await AsyncStorage.setItem('@notes_ai_encryption_key', storedKey);
+        await AsyncStorage.setItem('@notes_ai_encryption_key', storedKey!);
       }
       
       this.encryptionKey = storedKey;
@@ -312,7 +320,7 @@ export class SecurityService {
   public async isBiometricAuthenticationAvailable(): Promise<boolean> {
     try {
       const biometryType = await TouchID.isSupported();
-      return biometryType !== false && biometryType !== null;
+      return typeof biometryType === 'string' && biometryType !== null;
     } catch (error) {
       return false;
     }

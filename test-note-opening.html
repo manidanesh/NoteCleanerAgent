@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Note Opening</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-button { 
+            background: #3498db; 
+            color: white; 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 5px; 
+            margin: 10px; 
+            cursor: pointer; 
+        }
+        .test-button:hover { background: #2980b9; }
+        .result { 
+            margin: 10px 0; 
+            padding: 10px; 
+            border-radius: 5px; 
+            background: #f8f9fa; 
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Note Opening Functionality</h1>
+    
+    <div>
+        <button class="test-button" onclick="testNoteOpening()">
+            📱 Test Open Real Note
+        </button>
+        
+        <button class="test-button" onclick="testBackendAPI()">
+            🔧 Test Backend API
+        </button>
+        
+        <button class="test-button" onclick="testJavaScript()">
+            ⚡ Test JavaScript
+        </button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        async function testNoteOpening() {
+            console.log('🧪 Testing note opening...');
+            const results = document.getElementById('results');
+            
+            try {
+                // Test with a real note ID from the server
+                const noteId = 'x-coredata://FA0EA356-82B6-4B65-9C74-F1528B2816BD/ICNote/p719';
+                const noteTitle = 'Story :: Most proud';
+                
+                results.innerHTML += `<div class="result">🔍 Testing with note: "${noteTitle}"</div>`;
+                
+                const response = await fetch('/api/open-note', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ noteId, noteTitle })
+                });
+
+                const data = await response.json();
+                console.log('Response:', data);
+                
+                if (data.success) {
+                    results.innerHTML += `<div class="result" style="background: #d4edda;">✅ SUCCESS: ${data.message}</div>`;
+                } else {
+                    results.innerHTML += `<div class="result" style="background: #f8d7da;">❌ FAILED: ${data.error}</div>`;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                results.innerHTML += `<div class="result" style="background: #f8d7da;">❌ ERROR: ${error.message}</div>`;
+            }
+        }
+        
+        async function testBackendAPI() {
+            const results = document.getElementById('results');
+            
+            try {
+                const response = await fetch('/api/test');
+                const data = await response.json();
+                
+                results.innerHTML += `<div class="result" style="background: #d4edda;">✅ Backend API working: ${data.message}</div>`;
+                
+            } catch (error) {
+                results.innerHTML += `<div class="result" style="background: #f8d7da;">❌ Backend API error: ${error.message}</div>`;
+            }
+        }
+        
+        function testJavaScript() {
+            const results = document.getElementById('results');
+            results.innerHTML += `<div class="result" style="background: #d1ecf1;">⚡ JavaScript is working! Time: ${new Date().toLocaleTimeString()}</div>`;
+        }
+    </script>
+</body>
+</html>

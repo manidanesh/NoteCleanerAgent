@@ -20,9 +20,19 @@ export interface OnboardingPreferences {
  * Implements requirements 22.1-22.5 for onboarding and user education
  */
 export class OnboardingService {
+  private static instance: OnboardingService;
   private static readonly STORAGE_KEY = 'notes_ai_onboarding_state';
   private static readonly PREFERENCES_KEY = 'notes_ai_onboarding_preferences';
   private static readonly CURRENT_VERSION = '1.0.0';
+
+  private constructor() {}
+
+  public static getInstance(): OnboardingService {
+    if (!OnboardingService.instance) {
+      OnboardingService.instance = new OnboardingService();
+    }
+    return OnboardingService.instance;
+  }
 
   /**
    * Check if user has completed onboarding
@@ -36,6 +46,20 @@ export class OnboardingService {
       console.error('Error checking onboarding status:', error);
       return false;
     }
+  }
+
+  /**
+   * Instance method for checking onboarding completion
+   */
+  async isOnboardingComplete(): Promise<boolean> {
+    return OnboardingService.isOnboardingCompleted();
+  }
+
+  /**
+   * Instance method for resetting onboarding
+   */
+  async resetOnboarding(): Promise<void> {
+    return OnboardingService.resetOnboarding();
   }
 
   /**

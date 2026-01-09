@@ -3,6 +3,7 @@ import { LLMRequest, LLMRequestType, ContentAnalysis, Entity, EntityType, Conten
 import { LLMService } from '../services/LLMService';
 import { LLMServiceImpl } from '../services/LLMService';
 import { ErrorHandlingService, ErrorCategory } from '../services/ErrorHandlingService';
+import { OCRService } from '../services/OCRService';
 
 /**
  * Extracted content result from processing a note
@@ -76,6 +77,7 @@ export interface ProcessingError {
 export class ContentExtractorAgent {
   private llmService: LLMService;
   private errorHandlingService: ErrorHandlingService;
+  private ocrService: OCRService;
   private ocrEnabled: boolean = true;
   private imageAnalysisEnabled: boolean = true;
 
@@ -87,6 +89,15 @@ export class ContentExtractorAgent {
       privacyLevel: 'strict_on_device' as any
     });
     this.errorHandlingService = errorHandlingService || new ErrorHandlingService();
+    this.ocrService = OCRService.getInstance();
+  }
+
+  /**
+   * Initialize the content extractor agent
+   */
+  async initialize(): Promise<void> {
+    await this.ocrService.initialize();
+    return Promise.resolve();
   }
 
   /**
@@ -94,7 +105,7 @@ export class ContentExtractorAgent {
    */
   async extractContent(note: Note): Promise<ExtractedContent> {
     const errors: ProcessingError[] = [];
-    
+
     try {
       // 1. Text processing and normalization
       const normalizedText = this.normalizeText(note.content);
@@ -111,14 +122,14 @@ export class ContentExtractorAgent {
             note.id,
             normalizedText
           );
-          
+
           errors.push({
             component: 'OCR',
             error: errorInfo.message,
             severity: 'warning',
             recoverable: true
           });
-          
+
           // Continue with text-only content (fallback)
           console.warn(`OCR failed for note ${note.id}, continuing with text-only content`);
         }
@@ -181,7 +192,7 @@ export class ContentExtractorAgent {
           severity: 'warning',
           recoverable: true
         });
-        
+
         // Provide fallback semantic analysis
         semanticAnalysis = this.createFallbackAnalysis(normalizedText);
       }
@@ -240,19 +251,27 @@ export class ContentExtractorAgent {
    * Process handwritten content using OCR
    */
   private async processHandwriting(note: Note): Promise<string> {
-    // In a real implementation, this would integrate with:
-    // - Apple's Vision framework for iOS/macOS
-    // - Tesseract OCR as fallback
-    // - Cloud OCR services with user consent
-    
-    // For now, simulate OCR processing
-    await new Promise(resolve => setTimeout(resolve, 100)); // Simulate processing time
-    
-    // Mock OCR result - in real implementation this would be actual OCR
+    if (!this.ocrEnabled) return '';
+
+    // Requirement 15.1: Real OCR processing using Tesseract.js
     if (note.metadata.hasHandwriting) {
-      return `[OCR: Handwritten content from note ${note.id}]`;
+      // Find handwriting-specific attachments or search for handwriting patterns in images
+      const handwritingImages = note.attachments.filter(att =>
+        att.type === AttachmentType.IMAGE && (att.filename.toLowerCase().includes('handwriting') || att.content)
+      );
+
+      if (handwritingImages.length > 0 && handwritingImages[0].content) {
+        try {
+          return await this.ocrService.recognize(handwritingImages[0].content);
+        } catch (error) {
+          console.error('[ContentExtractorAgent] OCR failed for handwriting:', error);
+          return `[OCR Error: ${error}]`;
+        }
+      }
+
+      return `[Note has handwriting markers, but raw image data is not yet accessible for OCR]`;
     }
-    
+
     return '';
   }
 
@@ -261,18 +280,18 @@ export class ContentExtractorAgent {
    */
   private async analyzeImages(note: Note): Promise<ImageMetadata[]> {
     const imageMetadata: ImageMetadata[] = [];
-    
+
     // In a real implementation, this would:
     // - Use Apple's Vision framework for object detection
     // - Extract text from images using OCR
     // - Analyze image content using Core ML models
     // - Generate descriptions using LLM
-    
+
     // Mock image analysis for notes that have images
     if (note.metadata.hasImages) {
       // Simulate processing multiple images
       const imageCount = Math.min(3, Math.floor(Math.random() * 3) + 1);
-      
+
       for (let i = 0; i < imageCount; i++) {
         imageMetadata.push({
           id: `img_${note.id}_${i}`,
@@ -283,7 +302,7 @@ export class ContentExtractorAgent {
         });
       }
     }
-    
+
     return imageMetadata;
   }
 
@@ -292,7 +311,7 @@ export class ContentExtractorAgent {
    */
   private async processAttachments(attachments: Attachment[]): Promise<AttachmentContent[]> {
     const results: AttachmentContent[] = [];
-    
+
     for (const attachment of attachments) {
       try {
         const content = await this.processAttachment(attachment);
@@ -306,7 +325,7 @@ export class ContentExtractorAgent {
         });
       }
     }
-    
+
     return results;
   }
 
@@ -329,33 +348,33 @@ export class ContentExtractorAgent {
         case AttachmentType.PDF:
           result.extractedText = await this.extractPDFText(attachment);
           break;
-          
+
         case AttachmentType.DOCUMENT:
           result.extractedText = await this.extractDocumentText(attachment);
           break;
-          
+
         case AttachmentType.IMAGE:
           result.extractedText = await this.extractImageText(attachment);
           break;
-          
+
         case AttachmentType.AUDIO:
           result.extractedText = await this.transcribeAudio(attachment);
           break;
-          
+
         case AttachmentType.VIDEO:
           result.extractedText = await this.extractVideoText(attachment);
           break;
-          
+
         default:
           result.extractedText = attachment.content || '';
       }
-      
+
       result.processingSuccess = true;
-      
+
     } catch (error) {
       result.error = `Processing failed: ${error}`;
     }
-    
+
     return result;
   }
 
@@ -379,8 +398,20 @@ export class ContentExtractorAgent {
    * Extract text from image attachments using OCR
    */
   private async extractImageText(attachment: Attachment): Promise<string> {
-    // In real implementation: use OCR on image attachments
-    return `[Text extracted from image ${attachment.filename}]`;
+    if (!this.ocrEnabled) return '';
+
+    // Real OCR processing for image attachments
+    if (attachment.content) {
+      try {
+        console.log(`[ContentExtractorAgent] Extracting text from image attachment: ${attachment.filename}`);
+        return await this.ocrService.recognize(attachment.content);
+      } catch (error) {
+        console.error(`[ContentExtractorAgent] OCR failed for image ${attachment.filename}:`, error);
+        return `[OCR Failed: ${error}]`;
+      }
+    }
+
+    return `[Text extraction skipped: No raw content available for ${attachment.filename}]`;
   }
 
   /**
@@ -409,12 +440,12 @@ export class ContentExtractorAgent {
 
     // Group checklists by analyzing structure patterns
     const processedChecklists: ProcessedChecklist[] = [];
-    
+
     // For simplicity, treat all items as one checklist
     // In real implementation, this would analyze indentation, categories, etc.
     const sortedItems = [...checklists].sort((a, b) => a.order - b.order);
     const completedItems = sortedItems.filter(item => item.completed).length;
-    
+
     const structure: ChecklistStructure = {
       isNested: this.detectNestedStructure(sortedItems),
       hasCategories: this.detectCategories(sortedItems),
@@ -437,8 +468,8 @@ export class ContentExtractorAgent {
    */
   private detectNestedStructure(items: ChecklistItem[]): boolean {
     // Simple heuristic: look for indentation patterns in text
-    return items.some(item => 
-      item.text.startsWith('  ') || 
+    return items.some(item =>
+      item.text.startsWith('  ') ||
       item.text.startsWith('\t') ||
       item.text.includes('  -') ||
       item.text.includes('    ')
@@ -450,7 +481,7 @@ export class ContentExtractorAgent {
    */
   private detectCategories(items: ChecklistItem[]): boolean {
     // Simple heuristic: look for category-like patterns
-    return items.some(item => 
+    return items.some(item =>
       item.text.includes(':') ||
       item.text.toUpperCase() === item.text ||
       /^[A-Z][a-z]+ [A-Z][a-z]+/.test(item.text)
@@ -467,18 +498,18 @@ export class ContentExtractorAgent {
     attachmentContent?: AttachmentContent[]
   ): string {
     let combined = normalizedText;
-    
+
     if (ocrText) {
       combined += `\n\nHandwritten content: ${ocrText}`;
     }
-    
+
     if (imageMetadata && imageMetadata.length > 0) {
       const imageTexts = imageMetadata
         .map(img => `${img.description}${img.extractedText ? ': ' + img.extractedText : ''}`)
         .join('\n');
       combined += `\n\nImage content: ${imageTexts}`;
     }
-    
+
     if (attachmentContent && attachmentContent.length > 0) {
       const attachmentTexts = attachmentContent
         .filter(att => att.processingSuccess && att.extractedText)
@@ -488,7 +519,7 @@ export class ContentExtractorAgent {
         combined += `\n\nAttachment content: ${attachmentTexts}`;
       }
     }
-    
+
     return combined;
   }
 
@@ -531,7 +562,7 @@ Respond in a structured format.`,
   private parseLLMAnalysis(llmResponse: string): ContentAnalysis {
     // In a real implementation, this would parse structured LLM output
     // For now, create a reasonable analysis from the response
-    
+
     const topics = this.extractTopics(llmResponse);
     const entities = this.extractEntities(llmResponse);
     const contentType = this.determineContentType(llmResponse);
@@ -571,7 +602,7 @@ Respond in a structured format.`,
   private extractEntities(response: string): Entity[] {
     // Simple extraction - in real implementation would use NER
     const entities: Entity[] = [];
-    
+
     // Look for common entity patterns
     const datePattern = /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g;
     const dates = response.match(datePattern) || [];
@@ -591,7 +622,7 @@ Respond in a structured format.`,
    */
   private determineContentType(response: string): ContentType {
     const lowerResponse = response.toLowerCase();
-    
+
     if (lowerResponse.includes('meeting') || lowerResponse.includes('notes')) {
       return ContentType.MEETING_NOTES;
     } else if (lowerResponse.includes('task') || lowerResponse.includes('todo')) {
@@ -607,7 +638,7 @@ Respond in a structured format.`,
     } else if (lowerResponse.includes('scratch') || lowerResponse.includes('temp')) {
       return ContentType.SCRATCH_PAD;
     }
-    
+
     return ContentType.OTHER;
   }
 
@@ -618,9 +649,9 @@ Respond in a structured format.`,
     // Simple extraction of action-oriented phrases
     const actionWords = ['todo', 'task', 'action', 'need to', 'should', 'must', 'call', 'email', 'buy', 'complete'];
     const sentences = response.split(/[.!?]/);
-    
+
     return sentences
-      .filter(sentence => 
+      .filter(sentence =>
         actionWords.some(word => sentence.toLowerCase().includes(word))
       )
       .map(sentence => sentence.trim())
@@ -634,13 +665,13 @@ Respond in a structured format.`,
   private extractImportanceIndicators(response: string): string[] {
     const importanceWords = ['urgent', 'important', 'critical', 'asap', 'deadline', 'priority', 'emergency'];
     const indicators: string[] = [];
-    
+
     importanceWords.forEach(word => {
       if (response.toLowerCase().includes(word)) {
         indicators.push(word);
       }
     });
-    
+
     return indicators;
   }
 
@@ -653,7 +684,7 @@ Respond in a structured format.`,
     if (summaryMatch) {
       return summaryMatch[1].trim();
     }
-    
+
     // Fallback: use first 2 sentences
     const sentences = response.split(/[.!?]/).filter(s => s.trim().length > 0);
     return sentences.slice(0, 2).join('. ').trim() + '.';

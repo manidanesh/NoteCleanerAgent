@@ -65,7 +65,12 @@ export const BulkCleanupInterface: React.FC<BulkCleanupInterfaceProps> = ({
       console.log(`Analysis complete: ${result.totalNotes} notes analyzed`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Analysis failed';
-      setError(errorMessage);
+      let userFriendlyMessage = errorMessage;
+
+      if (errorMessage.includes('AppleScript access not permitted') || errorMessage.includes('Permission not granted')) {
+        userFriendlyMessage = 'Permission to access Apple Notes is not granted. Please go to System Settings > Security & Privacy > Accessibility (or Automation) and grant access to "Notes AI Organizer" (or your app\'s process).';
+      }
+      setError(userFriendlyMessage);
       console.error('Analysis failed:', err);
     } finally {
       setIsAnalyzing(false);

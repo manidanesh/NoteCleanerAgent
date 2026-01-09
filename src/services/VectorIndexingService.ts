@@ -1,7 +1,9 @@
 /**
  * Vector Indexing Service for similarity search and duplicate detection
- * Implements FAISS-like functionality in JavaScript for React Native compatibility
+ * Implements FAISS-like functionality with SQLite persistence
  */
+
+import { DatabaseService } from './DatabaseService';
 
 export interface VectorIndex {
   id: string;
@@ -69,17 +71,64 @@ export interface IndexStats {
 }
 
 /**
- * JavaScript implementation of vector indexing for React Native
+ * JavaScript implementation of vector indexing with SQLite persistence
  */
 export class VectorIndexingServiceImpl implements VectorIndexingService {
   private vectors: Map<string, VectorIndex> = new Map();
   private config: IndexConfig | null = null;
   private clusters: Map<number, string[]> = new Map(); // For IVF implementation
+  private db: DatabaseService;
+
+  constructor(db?: DatabaseService) {
+    this.db = db || new DatabaseService();
+    if (!this.db.isInitialized()) {
+      this.db.initialize();
+    }
+  }
 
   async initialize(config: IndexConfig): Promise<void> {
     this.config = config;
     this.vectors.clear();
     this.clusters.clear();
+
+    // Load vectors from database
+    try {
+      const rows = this.db.query<{ id: string, vector: string, metadata: string }>('SELECT id, vector, metadata FROM vectors');
+
+      console.log(`[VectorIndex] Loading ${rows.length} vectors from database...`);
+
+      for (const row of rows) {
+        try {
+          const vector = JSON.parse(row.vector);
+          const metadata = JSON.parse(row.metadata);
+
+          if (vector.length === config.dimension) {
+            this.vectors.set(row.id, {
+              id: row.id,
+              vector,
+              metadata
+            });
+
+            // Rebuild clusters if needed
+            if (config.indexType === IndexType.IVF_FLAT) {
+              const clusterId = this.assignToCluster(vector);
+              if (!this.clusters.has(clusterId)) {
+                this.clusters.set(clusterId, []);
+              }
+              this.clusters.get(clusterId)!.push(row.id);
+            }
+          }
+        } catch (e) {
+          console.warn(`[VectorIndex] Failed to load vector ${row.id}:`, e);
+        }
+      }
+
+      console.log(`[VectorIndex] Loaded ${this.vectors.size} vectors`);
+
+    } catch (error) {
+      console.error('[VectorIndex] Failed to load vectors from DB:', error);
+      // Fallback: start empty if DB read fails (rare)
+    }
   }
 
   async addVectors(vectors: VectorIndex[]): Promise<void> {
@@ -87,13 +136,30 @@ export class VectorIndexingServiceImpl implements VectorIndexingService {
       throw new Error('Index not initialized');
     }
 
+    // Persist to DB first
+    this.db.transaction(() => {
+      for (const vector of vectors) {
+        this.db.execute(
+          `INSERT OR REPLACE INTO vectors (id, vector, metadata, created_at) VALUES (?, ?, ?, ?)`,
+          [
+            vector.id,
+            JSON.stringify(vector.vector),
+            JSON.stringify(vector.metadata),
+            Date.now()
+          ]
+        );
+      }
+    });
+
+    // specific memory updates
     for (const vector of vectors) {
       if (vector.vector.length !== this.config.dimension) {
-        throw new Error(`Vector dimension mismatch: expected ${this.config.dimension}, got ${vector.vector.length}`);
+        console.warn(`Vector dimension mismatch for ${vector.id}: expected ${this.config.dimension}, got ${vector.vector.length}`);
+        continue;
       }
-      
+
       this.vectors.set(vector.id, vector);
-      
+
       // For IVF index, assign to cluster
       if (this.config.indexType === IndexType.IVF_FLAT) {
         const clusterId = this.assignToCluster(vector.vector);
@@ -118,6 +184,7 @@ export class VectorIndexingServiceImpl implements VectorIndexingService {
 
     if (this.config.indexType === IndexType.FLAT_IP) {
       // Flat search - check all vectors
+      // Since we loaded into memory, we iterate the Map
       for (const [id, vector] of this.vectors) {
         const similarity = this.computeInnerProduct(queryVector, vector.vector);
         if (similarity >= this.config.threshold) {
@@ -131,7 +198,7 @@ export class VectorIndexingServiceImpl implements VectorIndexingService {
     } else if (this.config.indexType === IndexType.IVF_FLAT) {
       // IVF search - search relevant clusters
       const relevantClusters = this.findRelevantClusters(queryVector, 3); // Search top 3 clusters
-      
+
       for (const clusterId of relevantClusters) {
         const vectorIds = this.clusters.get(clusterId) || [];
         for (const id of vectorIds) {
@@ -156,9 +223,14 @@ export class VectorIndexingServiceImpl implements VectorIndexingService {
   }
 
   async removeVectors(ids: string[]): Promise<void> {
+    // Remove from DB
+    const placeholders = ids.map(() => '?').join(',');
+    this.db.execute(`DELETE FROM vectors WHERE id IN (${placeholders})`, ids);
+
+    // Remove from memory
     for (const id of ids) {
       this.vectors.delete(id);
-      
+
       // Remove from clusters if using IVF
       if (this.config?.indexType === IndexType.IVF_FLAT) {
         for (const [clusterId, vectorIds] of this.clusters) {
@@ -185,6 +257,7 @@ export class VectorIndexingServiceImpl implements VectorIndexingService {
   }
 
   async clear(): Promise<void> {
+    this.db.execute('DELETE FROM vectors');
     this.vectors.clear();
     this.clusters.clear();
   }
@@ -197,18 +270,6 @@ export class VectorIndexingServiceImpl implements VectorIndexingService {
     return sum;
   }
 
-  private computeCosineSimilarity(a: number[], b: number[]): number {
-    const dotProduct = this.computeInnerProduct(a, b);
-    const magnitudeA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
-    const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
-    
-    if (magnitudeA === 0 || magnitudeB === 0) {
-      return 0;
-    }
-    
-    return dotProduct / (magnitudeA * magnitudeB);
-  }
-
   private assignToCluster(vector: number[]): number {
     // Simple clustering based on vector hash for IVF
     // In a real implementation, this would use k-means clustering
@@ -219,13 +280,13 @@ export class VectorIndexingServiceImpl implements VectorIndexingService {
   private findRelevantClusters(queryVector: number[], numClusters: number): number[] {
     // Find clusters most likely to contain similar vectors
     const clusterScores: Array<{ id: number; score: number }> = [];
-    
+
     for (const clusterId of this.clusters.keys()) {
       // Simple scoring based on cluster centroid approximation
       const score = this.assignToCluster(queryVector) === clusterId ? 1.0 : 0.1;
       clusterScores.push({ id: clusterId, score });
     }
-    
+
     clusterScores.sort((a, b) => b.score - a.score);
     return clusterScores.slice(0, numClusters).map(c => c.id);
   }
@@ -233,7 +294,7 @@ export class VectorIndexingServiceImpl implements VectorIndexingService {
   private estimateMemoryUsage(): number {
     // Rough estimate in bytes
     const vectorSize = (this.config?.dimension || 0) * 8; // 8 bytes per float64
-    const metadataSize = 100; // Rough estimate for metadata
+    const metadataSize = 500; // Estimate for metadata + overhead
     return this.vectors.size * (vectorSize + metadataSize);
   }
 }

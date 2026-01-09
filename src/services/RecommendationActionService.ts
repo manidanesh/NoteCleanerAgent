@@ -37,6 +37,7 @@ export interface OperationMetadata {
   deviceId: string;
   confidence: number;
   reasoning: string;
+  relatedNoteIds?: string[];
 }
 
 /**
@@ -196,7 +197,11 @@ export class RecommendationActionService {
       this.learningComponent.recordFeedback(
         recommendation.id,
         'rejected',
-        feedbackContext
+        {
+          recommendation,
+          note,
+          userReason: reason || 'User rejected recommendation'
+        }
       );
 
       // Update recommendation status

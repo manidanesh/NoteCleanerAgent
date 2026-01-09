@@ -1,10 +1,10 @@
 // Mock AsyncStorage for Node.js environment
 const AsyncStorage = {
-  getItem: async (key: string) => null,
-  setItem: async (key: string, value: string) => {},
-  removeItem: async (key: string) => {},
-  multiRemove: async (keys: string[]) => {},
-  getAllKeys: async () => []
+  getItem: async (key: string): Promise<string | null> => null,
+  setItem: async (key: string, value: string): Promise<void> => {},
+  removeItem: async (key: string): Promise<void> => {},
+  multiRemove: async (keys: string[]): Promise<void> => {},
+  getAllKeys: async (): Promise<string[]> => []
 };
 import { SecurityService } from './SecurityService';
 import { Note } from '../models/Note';

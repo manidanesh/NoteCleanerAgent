@@ -57,7 +57,8 @@ export interface NotesAPIService {
   getNoteById(id: string): Promise<APIResult<Note>>;
   updateNote(note: Note): Promise<APIResult<Note>>;
   deleteNote(id: string): Promise<APIResult<void>>;
-  
+  showNote(id: string): Promise<APIResult<void>>;
+
   // Real-time monitoring
   startMonitoring(): Promise<void>;
   stopMonitoring(): void;
@@ -71,6 +72,8 @@ export interface NotesAPIService {
  * Cross-platform Apple Notes API implementation
  */
 export class AppleNotesAPIService implements NotesAPIService {
+  private static instance: AppleNotesAPIService;
+
   private permissionStatus: PermissionStatus = PermissionStatus.NOT_REQUESTED;
   private permissionCallbacks: (() => void)[] = [];
   private changeCallbacks: ((event: NotesChangeEvent) => void)[] = [];
@@ -94,6 +97,16 @@ export class AppleNotesAPIService implements NotesAPIService {
   }
 
   /**
+   * Get singleton instance
+   */
+  static getInstance(): AppleNotesAPIService {
+    if (!AppleNotesAPIService.instance) {
+      AppleNotesAPIService.instance = new AppleNotesAPIService();
+    }
+    return AppleNotesAPIService.instance;
+  }
+
+  /**
    * Initialize platform-specific implementations
    */
   private initializePlatformSpecific(): void {
@@ -102,7 +115,7 @@ export class AppleNotesAPIService implements NotesAPIService {
     } else if (this.isMacOS()) {
       this.appleScriptBridge = AppleScriptBridge.getInstance();
       this.fsEventsMonitor = FSEventsMonitor.getInstance();
-      
+
       // Set up FSEvents change monitoring
       this.fsEventsMonitor.onNotesChanged((event) => {
         this.notifyNotesChanged(event);
@@ -122,7 +135,7 @@ export class AppleNotesAPIService implements NotesAPIService {
       } else {
         this.permissionStatus = PermissionStatus.DENIED;
       }
-      
+
       return this.permissionStatus;
     } catch (error) {
       console.error('Permission request failed:', error);
@@ -148,7 +161,7 @@ export class AppleNotesAPIService implements NotesAPIService {
       } else {
         this.permissionStatus = PermissionStatus.DENIED;
       }
-      
+
       return this.permissionStatus;
     } catch (error) {
       console.error('Permission check failed:', error);
@@ -188,13 +201,13 @@ export class AppleNotesAPIService implements NotesAPIService {
           }
           return result.data!;
         }
-        
+
         throw new Error('Platform not supported');
       },
       'getAllNotes',
       ErrorCategory.API_FAILURE
     ).then(data => ({ success: true, data }))
-     .catch(error => ({ success: false, error: error.message }));
+      .catch(error => ({ success: false, error: error.message }));
   }
 
   /**
@@ -222,13 +235,13 @@ export class AppleNotesAPIService implements NotesAPIService {
           }
           return result.data!;
         }
-        
+
         throw new Error('Platform not supported');
       },
       `getNoteById(${id})`,
       ErrorCategory.API_FAILURE
     ).then(data => ({ success: true, data }))
-     .catch(error => ({ success: false, error: error.message }));
+      .catch(error => ({ success: false, error: error.message }));
   }
 
   /**
@@ -247,7 +260,7 @@ export class AppleNotesAPIService implements NotesAPIService {
         } else if (this.isMacOS() && this.appleScriptBridge) {
           return await this.appleScriptBridge.updateNote(note);
         }
-        
+
         return { success: false, error: 'Platform not supported' };
       } catch (error) {
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -271,7 +284,32 @@ export class AppleNotesAPIService implements NotesAPIService {
         } else if (this.isMacOS()) {
           return await this.deleteNoteAppleScript(id);
         }
-        
+
+        return { success: false, error: 'Platform not supported' };
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    });
+  }
+
+  /**
+   * Show note in Notes app
+   */
+  async showNote(id: string): Promise<APIResult<void>> {
+    return await this.executeWithRateLimit(async () => {
+      const permissionStatus = await this.checkPermissionStatus();
+      if (permissionStatus !== PermissionStatus.GRANTED) {
+        return { success: false, error: 'Permission not granted' };
+      }
+
+      try {
+        if (this.isIOS()) {
+          // EventKit doesn't support showing notes easily
+          return { success: false, error: 'Not supported on iOS' };
+        } else if (this.isMacOS() && this.appleScriptBridge) {
+          return await this.appleScriptBridge.showNote(id);
+        }
+
         return { success: false, error: 'Platform not supported' };
       } catch (error) {
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -332,7 +370,7 @@ export class AppleNotesAPIService implements NotesAPIService {
       return false;
     }
     return (window as any).navigator?.platform?.includes('iPhone') ||
-           (window as any).navigator?.platform?.includes('iPad');
+      (window as any).navigator?.platform?.includes('iPad');
   }
 
   private isMacOS(): boolean {
@@ -343,7 +381,7 @@ export class AppleNotesAPIService implements NotesAPIService {
   // Rate limiting implementation
   private async executeWithRateLimit<T>(operation: () => Promise<APIResult<T>>): Promise<APIResult<T>> {
     const now = Date.now();
-    
+
     // Reset counter if more than 1 second has passed
     if (now - this.lastRequestTime > 1000) {
       this.requestCount = 0;
@@ -375,15 +413,15 @@ export class AppleNotesAPIService implements NotesAPIService {
       }
 
       if (attempt < this.rateLimitConfig.retryAttempts - 1) {
-        const delay = this.rateLimitConfig.initialDelayMs * 
-                     Math.pow(this.rateLimitConfig.backoffMultiplier, attempt);
+        const delay = this.rateLimitConfig.initialDelayMs *
+          Math.pow(this.rateLimitConfig.backoffMultiplier, attempt);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 
-    return { 
-      success: false, 
-      error: lastError?.message || 'Operation failed after retries' 
+    return {
+      success: false,
+      error: lastError?.message || 'Operation failed after retries'
     };
   }
 

@@ -214,7 +214,7 @@ export class EventKitBridge {
       shareCount: 0,
       tags: this.extractTags(content),
       isShared: false, // EventKit doesn't track sharing
-      wordCount: content.split(/\s+/).filter(word => word.length > 0).length,
+      wordCount: content.split(/\s+/).filter((word: string) => word.length > 0).length,
       hasHandwriting: false, // EventKit doesn't support handwriting
       hasImages: false // EventKit doesn't support images
     };

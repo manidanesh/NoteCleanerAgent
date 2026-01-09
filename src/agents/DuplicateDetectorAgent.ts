@@ -15,17 +15,17 @@ export class DuplicateDetectorAgent {
   private readonly EMBEDDING_DIMENSION = 384; // MobileBERT embedding size
   private readonly MAX_NOTES_FLAT_INDEX = 100000;
 
-  constructor(llmService: LLMService) {
+  constructor(llmService: LLMService, vectorIndexingService?: VectorIndexingService) {
     this.llmService = llmService;
-    this.vectorIndex = new VectorIndexingServiceImpl();
+    this.vectorIndex = vectorIndexingService || new VectorIndexingServiceImpl();
   }
 
   /**
    * Initialize the duplicate detector with appropriate indexing strategy
    */
   async initialize(totalNotes: number): Promise<void> {
-    const indexType = totalNotes < this.MAX_NOTES_FLAT_INDEX 
-      ? IndexType.FLAT_IP 
+    const indexType = totalNotes < this.MAX_NOTES_FLAT_INDEX
+      ? IndexType.FLAT_IP
       : IndexType.IVF_FLAT;
 
     await this.vectorIndex.initialize({
@@ -71,7 +71,7 @@ export class DuplicateDetectorAgent {
       if (similarNotes.length > 0) {
         // Create duplicate group
         const noteIds = [note.id, ...similarNotes.map(r => r.id)];
-        
+
         // Use LLM for semantic comparison and ranking
         const notesForGroup = noteIds.map(id => notes.find(n => n.id === id)).filter((note): note is Note => note !== undefined);
         if (notesForGroup.length > 1) {
@@ -88,7 +88,7 @@ export class DuplicateDetectorAgent {
               groupSimilarities.push(this.SIMILARITY_THRESHOLD);
             }
           }
-          
+
           const duplicateGroup = await this.createDuplicateGroup(
             notesForGroup,
             groupSimilarities
@@ -115,10 +115,10 @@ export class DuplicateDetectorAgent {
       try {
         // Create content for embedding
         const content = this.prepareContentForEmbedding(note);
-        
+
         // Generate embedding using LLM
         const embedding = await this.generateEmbedding(content);
-        
+
         embeddings.push({
           id: note.id,
           vector: embedding,
@@ -153,13 +153,13 @@ export class DuplicateDetectorAgent {
     // For now, create a simple hash-based embedding
     // In a real implementation, this would use the LLM's embedding capabilities
     const embedding = new Array(this.EMBEDDING_DIMENSION).fill(0);
-    
+
     // Simple hash-based embedding generation
     for (let i = 0; i < content.length && i < this.EMBEDDING_DIMENSION; i++) {
       const charCode = content.charCodeAt(i);
       embedding[i % this.EMBEDDING_DIMENSION] += charCode / 255.0;
     }
-    
+
     // Normalize the embedding
     const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
     if (magnitude > 0) {
@@ -167,7 +167,7 @@ export class DuplicateDetectorAgent {
         embedding[i] /= magnitude;
       }
     }
-    
+
     return embedding;
   }
 
@@ -176,7 +176,7 @@ export class DuplicateDetectorAgent {
    */
   private prepareContentForEmbedding(note: Note): string {
     let content = `${note.title}\n${note.content}`;
-    
+
     // Add checklist content
     if (note.checklists.length > 0) {
       const checklistText = note.checklists
@@ -184,7 +184,7 @@ export class DuplicateDetectorAgent {
         .join('\n');
       content += `\n${checklistText}`;
     }
-    
+
     // Add attachment information
     if (note.attachments.length > 0) {
       const attachmentText = note.attachments
@@ -192,7 +192,7 @@ export class DuplicateDetectorAgent {
         .join('\n');
       content += `\n${attachmentText}`;
     }
-    
+
     return content.trim();
   }
 
@@ -379,7 +379,7 @@ Respond with just the strategy name.`,
     const contentLengths = notes.map(n => n.content.length);
     const maxLength = Math.max(...contentLengths);
     const minLength = Math.min(...contentLengths);
-    
+
     if (maxLength > minLength * 1.5) {
       conflicts.push({
         field: 'content_length',
@@ -400,10 +400,10 @@ Respond with just the strategy name.`,
    */
   private calculateGroupConfidence(similarities: number[]): number {
     if (similarities.length === 0) return 0;
-    
+
     const avgSimilarity = similarities.reduce((sum, sim) => sum + sim, 0) / similarities.length;
     const minSimilarity = Math.min(...similarities);
-    
+
     // Confidence is based on average similarity and minimum similarity
     return (avgSimilarity * 0.7 + minSimilarity * 0.3);
   }

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Note Layout Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; padding: 20px; }
+        
+        .note-item { 
+            padding: 15px; 
+            border: 1px solid #ecf0f1; 
+            border-radius: 8px; 
+            margin-bottom: 20px !important; 
+            background: white;
+            display: block !important;
+            width: 100%;
+            position: relative;
+            clear: both;
+            box-sizing: border-box;
+        }
+        
+        .real-note-item {
+            background: #f8f9fa !important;
+            border: 1px solid #3498db !important;
+            margin-bottom: 25px !important;
+        }
+        
+        .note-content-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .note-info {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .note-title { font-weight: bold; color: #2c3e50; margin-bottom: 5px; }
+        .note-meta { color: #6c757d; font-size: 12px; margin-bottom: 8px; }
+        .note-id { color: #6c757d; font-size: 10px; margin-bottom: 8px; font-family: monospace; }
+        .note-content { color: #7f8c8d; font-size: 0.9rem; }
+        
+        .open-note-btn { 
+            background: #3498db; 
+            color: white; 
+            border: none; 
+            padding: 8px 15px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            margin-top: 10px; 
+        }
+        
+        .real-note-btn {
+            background: #27ae60 !important;
+            font-size: 14px !important;
+            padding: 10px 15px !important;
+            flex-shrink: 0;
+        }
+        
+        /* Force proper layout */
+        #notes-container {
+            display: block;
+            width: 100%;
+            overflow: visible;
+            clear: both;
+        }
+        
+        #notes-container .note-item {
+            position: static !important;
+            float: none !important;
+            display: block !important;
+            margin-bottom: 25px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            clear: both !important;
+        }
+        
+        /* Prevent any nested note items */
+        .note-item .note-item {
+            display: none !important;
+        }
+        
+        /* Ensure each note is completely isolated */
+        .note-item[data-note-index] {
+            isolation: isolate;
+            contain: layout style;
+        }
+    </style>
+</head>
+<body>
+    <h1>Note Layout Test - Should Show 3 Separate Notes</h1>
+    <p>Each note should appear as a separate block, not stacked or nested.</p>
+    
+    <div id="notes-container">
+        <!-- This will be populated by JavaScript -->
+    </div>
+    
+    <script>
+        // Simulate the note data structure
+        const testNotes = [
+            {
+                id: 'x-coredata://test1/Note/p1',
+                title: 'Test Note 1',
+                content: 'This is the content of the first test note.',
+                folder: 'Notes'
+            },
+            {
+                id: 'x-coredata://test2/Note/p2', 
+                title: 'Test Note 2',
+                content: 'This is the content of the second test note.',
+                folder: 'Work'
+            },
+            {
+                id: 'x-coredata://test3/Note/p3',
+                title: 'Test Note 3', 
+                content: 'This is the content of the third test note.',
+                folder: 'Personal'
+            }
+        ];
+        
+        // Generate HTML using the same logic as the main app
+        function generateNotesHTML() {
+            let allNotesHtml = '';
+            
+            console.log('🔍 Generating HTML for', testNotes.length, 'test notes');
+            
+            testNotes.forEach((note, index) => {
+                // Escape HTML characters to prevent malformed HTML
+                const safeTitle = note.title.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const safeContent = note.content.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const safeId = note.id.replace(/"/g, '&quot;');
+                const safeFolder = note.folder.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                
+                console.log(`📝 Processing note ${index + 1}: "${safeTitle}"`);
+                
+                // Create completely isolated note container
+                const noteHtml = `
+                    <div class="note-item real-note-item" data-note-index="${index}">
+                        <div class="note-content-wrapper">
+                            <div class="note-info">
+                                <div class="note-title">📱 "${safeTitle}"</div>
+                                <div class="note-meta">
+                                    📁 ${safeFolder} • Test Note
+                                </div>
+                                <div class="note-id">
+                                    ID: ${safeId}
+                                </div>
+                                <div class="note-content">${safeContent}</div>
+                            </div>
+                            <button class="open-note-btn real-note-btn" onclick="alert('Would open: ${safeTitle}')">
+                                📱 Test Button
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Add each note HTML separately to prevent nesting
+                allNotesHtml += noteHtml;
+            });
+            
+            console.log('✅ Generated HTML for all notes, total length:', allNotesHtml.length);
+            
+            // Clear the container first, then set the HTML
+            const notesContainer = document.getElementById('notes-container');
+            notesContainer.innerHTML = '';
+            notesContainer.innerHTML = allNotesHtml;
+            
+            console.log('✅ HTML inserted into DOM');
+        }
+        
+        // Generate the notes when page loads
+        document.addEventListener('DOMContentLoaded', generateNotesHTML);
+    </script>
+</body>
+</html>

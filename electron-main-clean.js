@@ -69,9 +69,22 @@ tell application "Notes"
                     set folderName to name of (container of nt) as string
                 end try
                 
-                log "Processing note: " & noteTitle & " with ID: " & noteId
+                -- Clean the content by removing HTML tags and limiting length
+                set cleanContent to my cleanText(noteBody)
+                if length of cleanContent > 200 then
+                    set cleanContent to text 1 thru 200 of cleanContent & "..."
+                end if
                 
-                set noteInfo to noteId & "|||" & noteTitle & "|||" & noteBody & "|||" & folderName
+                -- Clean the title by removing any problematic characters
+                set cleanTitle to my cleanText(noteTitle)
+                if length of cleanTitle > 100 then
+                    set cleanTitle to text 1 thru 100 of cleanTitle & "..."
+                end if
+                
+                log "Processing note: " & cleanTitle & " with ID: " & noteId
+                
+                -- Use a more unique delimiter that won't appear in content
+                set noteInfo to noteId & "|||TITLE|||" & cleanTitle & "|||CONTENT|||" & cleanContent & "|||FOLDER|||" & folderName
                 set end of resultList to noteInfo
             on error e
                 log "Error processing note " & noteCount & ": " & e
@@ -83,13 +96,67 @@ tell application "Notes"
         return "ERROR: " & e
     end try
     
-    set AppleScript's text item delimiters to "###"
+    -- Use a more unique separator between notes
+    set AppleScript's text item delimiters to "###NOTE_SEPARATOR###"
     set finalResult to resultList as string
     set AppleScript's text item delimiters to ""
     
     log "Returning " & (count of resultList) & " notes"
     return finalResult
-end tell`;
+end tell
+
+-- Helper function to clean text content
+on cleanText(inputText)
+    try
+        -- Remove HTML tags
+        set cleanedText to inputText
+        
+        -- Simple HTML tag removal (basic approach)
+        repeat while cleanedText contains "<"
+            set startTag to offset of "<" in cleanedText
+            set endTag to offset of ">" in cleanedText
+            if endTag > startTag then
+                set cleanedText to (text 1 thru (startTag - 1) of cleanedText) & (text (endTag + 1) thru -1 of cleanedText)
+            else
+                exit repeat
+            end if
+        end repeat
+        
+        -- Remove extra whitespace and newlines
+        set cleanedText to my replaceText(cleanedText, "\\n", " ")
+        set cleanedText to my replaceText(cleanedText, "\\r", " ")
+        set cleanedText to my replaceText(cleanedText, "  ", " ")
+        
+        -- Remove any remaining delimiter characters to prevent parsing issues
+        set cleanedText to my replaceText(cleanedText, "|||", " ")
+        set cleanedText to my replaceText(cleanedText, "###", " ")
+        set cleanedText to my replaceText(cleanedText, "\"", "'")
+        
+        -- Ensure no line breaks or special characters that could break HTML
+        set cleanedText to my replaceText(cleanedText, return, " ")
+        set cleanedText to my replaceText(cleanedText, linefeed, " ")
+        set cleanedText to my replaceText(cleanedText, tab, " ")
+        
+        return cleanedText
+    on error
+        return inputText
+    end try
+end cleanText
+
+-- Helper function to replace text
+on replaceText(inputText, searchText, replaceText)
+    try
+        set AppleScript's text item delimiters to searchText
+        set textItems to text items of inputText
+        set AppleScript's text item delimiters to replaceText
+        set outputText to textItems as string
+        set AppleScript's text item delimiters to ""
+        return outputText
+    on error
+        set AppleScript's text item delimiters to ""
+        return inputText
+    end try
+end replaceText`;
 
             const tempScript = path.join(require('os').tmpdir(), `get-real-notes-${Date.now()}.scpt`);
             fs.writeFileSync(tempScript, getRealNotesScript);
@@ -111,36 +178,89 @@ end tell`;
                 throw new Error('AppleScript error: ' + stdout);
             }
             
-            // Parse real notes
+            // Parse real notes with improved error handling
             const realNotes = [];
             if (stdout && stdout.trim()) {
-                const noteBlocks = stdout.split('###').filter(block => block.trim());
+                console.log('🔍 NATIVE APP: Parsing AppleScript output...');
+                const noteBlocks = stdout.split('###NOTE_SEPARATOR###').filter(block => block.trim());
                 
-                noteBlocks.forEach(block => {
-                    const parts = block.split('|||');
-                    if (parts.length >= 4) {
-                        const noteId = parts[0];
-                        const title = parts[1] || 'Untitled';
-                        const content = parts[2] || '';
-                        const folder = parts[3] || 'Notes';
+                console.log(`📊 NATIVE APP: Found ${noteBlocks.length} note blocks to parse`);
+                
+                noteBlocks.forEach((block, index) => {
+                    try {
+                        console.log(`🔍 NATIVE APP: Parsing block ${index + 1}/${noteBlocks.length}`);
                         
-                        // Only include if it has a real Core Data ID
-                        if (noteId && noteId.startsWith('x-coredata://') && !noteId.includes('12345678-ABCD-1234-EFGH-')) {
-                            realNotes.push({
-                                id: noteId,
-                                title: title,
-                                content: content.substring(0, 200),
-                                folder: folder,
-                                created: '2024-12-01',
-                                modified: '2024-12-20',
-                                isReal: true
-                            });
+                        // Split by the delimiter format with validation
+                        const titleSplit = block.split('|||TITLE|||');
+                        if (titleSplit.length < 2) {
+                            console.log(`⚠️ NATIVE APP: Block ${index + 1} missing title delimiter`);
+                            return;
                         }
+                        
+                        const noteId = titleSplit[0].trim();
+                        const contentSplit = titleSplit[1].split('|||CONTENT|||');
+                        
+                        if (contentSplit.length < 2) {
+                            console.log(`⚠️ NATIVE APP: Block ${index + 1} missing content delimiter`);
+                            return;
+                        }
+                        
+                        const title = contentSplit[0].trim() || 'Untitled';
+                        const folderSplit = contentSplit[1].split('|||FOLDER|||');
+                        const content = folderSplit[0].trim() || '';
+                        const folder = folderSplit[1] ? folderSplit[1].trim() : 'Notes';
+                        
+                        // Validate Core Data ID format
+                        if (!noteId || !noteId.startsWith('x-coredata://')) {
+                            console.log(`⚠️ NATIVE APP: Block ${index + 1} has invalid ID format: ${noteId.substring(0, 30)}...`);
+                            return;
+                        }
+                        
+                        // Skip mock notes
+                        if (noteId.includes('12345678-ABCD-1234-EFGH-')) {
+                            console.log(`⚠️ NATIVE APP: Block ${index + 1} is a mock note, skipping`);
+                            return;
+                        }
+                        
+                        // Clean and validate data
+                        const cleanTitle = title.replace(/[<>"']/g, '').substring(0, 100);
+                        const cleanContent = content.replace(/[<>"']/g, '').substring(0, 200);
+                        const cleanFolder = folder.replace(/[<>"']/g, '').substring(0, 50);
+                        
+                        if (cleanTitle.length === 0) {
+                            console.log(`⚠️ NATIVE APP: Block ${index + 1} has empty title after cleaning`);
+                            return;
+                        }
+                        
+                        const noteData = {
+                            id: noteId,
+                            title: cleanTitle,
+                            content: cleanContent,
+                            folder: cleanFolder,
+                            created: '2024-12-01',
+                            modified: '2024-12-20',
+                            isReal: true
+                        };
+                        
+                        realNotes.push(noteData);
+                        console.log(`✅ NATIVE APP: Successfully parsed note ${index + 1}: "${cleanTitle.substring(0, 30)}..." (ID: ${noteId.substring(0, 50)}...)`);
+                        
+                    } catch (parseError) {
+                        console.error(`❌ NATIVE APP: Error parsing note block ${index + 1}:`, parseError.message);
+                        console.error(`Block preview: ${block.substring(0, 100)}...`);
                     }
                 });
             }
             
             console.log(`✅ NATIVE APP: Found ${realNotes.length} real notes with valid IDs`);
+            
+            // Debug: Log the first few note titles to verify parsing
+            if (realNotes.length > 0) {
+                console.log('🔍 NATIVE APP: First few parsed notes:');
+                realNotes.slice(0, 3).forEach((note, index) => {
+                    console.log(`  ${index + 1}. "${note.title}" (${note.content.substring(0, 50)}...)`);
+                });
+            }
             
             // Create analysis data using real notes
             const analysisData = {

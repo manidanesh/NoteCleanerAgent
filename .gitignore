@@ -6,8 +6,18 @@ yarn-error.log*
 
 # Build outputs
 dist/
+dist-electron/
 build/
 *.tsbuildinfo
+
+# Electron build artifacts
+*.dmg
+*.zip
+*.exe
+*.deb
+*.rpm
+*.AppImage
+*.app
 
 # Environment variables
 .env

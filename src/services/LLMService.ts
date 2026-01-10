@@ -175,10 +175,12 @@ export class LLMServiceImpl implements LLMService {
     // Use override in development to completely bypass resource constraints
     this.resourceManager = new LLMResourceManagerOverride();
     this.rateLimiter = new LLMRateLimiter({
-      maxRequestsPerMinute: 60, // Higher rate limit for development
-      requestDelayMs: 500, // Shorter delay for development
+      maxRequestsPerMinute: 120, // Higher rate limit for development
+      requestDelayMs: 100, // Much shorter delay - 100ms instead of 500ms
       maxTokensPerRequest: 1200, // Higher token limit
-      maxContentLength: 2500 // Longer content allowed
+      maxContentLength: 2500, // Longer content allowed
+      maxRetries: 2, // Reduced retries to fail faster
+      backoffMultiplier: 1.5 // Reduced backoff
     });
     
     // Initialize providers asynchronously but ensure fallback is available immediately
@@ -262,9 +264,9 @@ export class LLMServiceImpl implements LLMService {
   }
 
   async processRequest(request: LLMRequest): Promise<LLMResponse> {
-    // Add timeout to prevent hanging
+    // Add timeout to prevent hanging - reduced from 10s to 8s
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('LLM request timeout after 10 seconds')), 10000);
+      setTimeout(() => reject(new Error('LLM request timeout after 8 seconds')), 8000);
     });
 
     try {
@@ -349,9 +351,9 @@ export class LLMServiceImpl implements LLMService {
       const queuedRequest = this.requestQueue.shift();
       if (queuedRequest) {
         this.activeRequests++;
-        // Add delay between processing queue items
+        // Reduced delay between processing queue items from 1s to 100ms
         if (this.activeRequests > 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay for concurrent requests
+          await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay for concurrent requests
         }
         this.processQueuedRequest(queuedRequest);
       }
@@ -391,10 +393,10 @@ export class LLMServiceImpl implements LLMService {
       const provider = this.providers.get(providerType);
       if (provider) {
         try {
-          // Add timeout to isAvailable check to prevent hanging
+          // Add timeout to isAvailable check to prevent hanging - reduced from 2s to 1s
           const isAvailablePromise = provider.isAvailable();
           const timeoutPromise = new Promise<boolean>((_, reject) => {
-            setTimeout(() => reject(new Error('Provider availability check timeout')), 2000);
+            setTimeout(() => reject(new Error('Provider availability check timeout')), 1000);
           });
           
           const isAvailable = await Promise.race([isAvailablePromise, timeoutPromise]);

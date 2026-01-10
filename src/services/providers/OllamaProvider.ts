@@ -25,13 +25,19 @@ export class OllamaProvider implements ILLMProvider {
 
   async isAvailable(): Promise<boolean> {
     try {
-      // Check if Ollama server is running
+      // Check if Ollama server is running with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+      
       const response = await fetch(`${this.baseUrl}/api/tags`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
@@ -44,6 +50,9 @@ export class OllamaProvider implements ILLMProvider {
       return false;
     } catch (error) {
       this.isConnected = false;
+      if ((error as Error).name === 'AbortError') {
+        console.warn('Ollama availability check timed out');
+      }
       return false;
     }
   }
@@ -91,25 +100,40 @@ export class OllamaProvider implements ILLMProvider {
       }
     };
 
-    const response = await fetch(`${this.baseUrl}/api/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for generation
 
-    if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/api/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      return {
+        text: data.response || '',
+        confidence: this.calculateConfidence(data),
+        tokensUsed: data.eval_count || 0
+      };
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if ((error as Error).name === 'AbortError') {
+        throw new Error('Ollama request timed out after 15 seconds');
+      }
+      throw error;
     }
-
-    const data = await response.json();
-    
-    return {
-      text: data.response || '',
-      confidence: this.calculateConfidence(data),
-      tokensUsed: data.eval_count || 0
-    };
   }
 
   private buildPrompt(request: LLMRequest): string {

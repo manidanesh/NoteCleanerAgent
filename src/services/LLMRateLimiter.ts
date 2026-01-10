@@ -32,11 +32,11 @@ export class LLMRateLimiter {
 
   constructor(config?: Partial<RateLimitConfig>) {
     this.config = {
-      maxRequestsPerMinute: 30, // Conservative rate limit
+      maxRequestsPerMinute: 120, // Increased rate limit for better performance
       maxTokensPerRequest: 1000, // Reduced token limit
-      requestDelayMs: 2000, // 2 second delay between requests
-      maxRetries: 3,
-      backoffMultiplier: 2,
+      requestDelayMs: 100, // Much shorter delay - 100ms instead of 2s
+      maxRetries: 2, // Reduced retries to fail faster
+      backoffMultiplier: 1.5, // Reduced backoff multiplier
       maxContentLength: 2000, // Limit content length
       ...config
     };
@@ -249,16 +249,16 @@ export class LLMRateLimiter {
         );
         results.push(result);
         
-        // Add delay between items in batch
+        // Add delay between items in batch (reduced from 500ms to 50ms)
         if (batch.indexOf(item) < batch.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500)); // 500ms between items
+          await new Promise(resolve => setTimeout(resolve, 50)); // 50ms between items
         }
       }
       
-      // Add longer delay between batches
+      // Add shorter delay between batches (reduced from 2s to 200ms)
       if (i + batchSize < items.length) {
         console.log('Waiting between batches...');
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2s between batches
+        await new Promise(resolve => setTimeout(resolve, 200)); // 200ms between batches
       }
     }
     

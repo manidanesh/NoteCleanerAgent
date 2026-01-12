@@ -264,9 +264,9 @@ export class LLMServiceImpl implements LLMService {
   }
 
   async processRequest(request: LLMRequest): Promise<LLMResponse> {
-    // Add timeout to prevent hanging - reduced from 10s to 8s
+    // Add timeout to prevent hanging - increased from 8s to 15s for better reliability
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('LLM request timeout after 8 seconds')), 8000);
+      setTimeout(() => reject(new Error('LLM request timeout after 15 seconds')), 15000);
     });
 
     try {

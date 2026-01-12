@@ -56,10 +56,10 @@ export class LLMRateLimiter {
    */
   canMakeRequest(): boolean {
     const now = Date.now();
-    const oneMinuteAgo = now - 60000;
+    const thirtySecondsAgo = now - 30000; // Reduced from 60 seconds to 30 seconds
 
-    // Clean old request times
-    this.requestTimes = this.requestTimes.filter(time => time > oneMinuteAgo);
+    // Clean old request times more aggressively
+    this.requestTimes = this.requestTimes.filter(time => time > thirtySecondsAgo);
 
     // Check rate limit
     if (this.requestTimes.length >= this.config.maxRequestsPerMinute) {
@@ -97,9 +97,12 @@ export class LLMRateLimiter {
     const now = Date.now();
     
     if (this.requestTimes.length >= this.config.maxRequestsPerMinute) {
-      // Wait until oldest request is more than 1 minute old
+      // Instead of waiting for the full minute, wait for a shorter adaptive period
       const oldestRequest = Math.min(...this.requestTimes);
-      return Math.max(1000, (oldestRequest + 60000) - now);
+      const timeToWait = (oldestRequest + 30000) - now; // Changed to 30 seconds
+      
+      // Cap the wait time to a maximum of 2 seconds to prevent excessive delays
+      return Math.max(100, Math.min(2000, timeToWait));
     }
 
     // Wait for minimum delay

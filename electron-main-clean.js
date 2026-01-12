@@ -41,6 +41,51 @@ function createServer() {
         try {
             console.log('🔍 NATIVE APP: Starting analysis...');
             
+            // First, test Apple Notes access with a simple script
+            console.log('🧪 NATIVE APP: Testing Apple Notes permissions...');
+            
+            const testScript = `
+tell application "Notes"
+    try
+        set noteCount to count of notes
+        return "SUCCESS: Found " & noteCount & " notes"
+    on error e
+        return "ERROR: " & e
+    end try
+end tell`;
+
+            try {
+                const { stdout: testResult } = await execAsync(`osascript -e '${testScript}'`, { timeout: 10000 });
+                console.log('🧪 NATIVE APP: Permission test result:', testResult);
+                
+                if (testResult && testResult.includes('ERROR:')) {
+                    throw new Error('Apple Notes permission denied: ' + testResult);
+                }
+            } catch (permError) {
+                console.error('❌ NATIVE APP: Apple Notes permission test failed:', permError);
+                return res.json({
+                    success: true,
+                    summary: {
+                        totalNotes: 0,
+                        duplicateGroups: 0,
+                        junkNotesFound: 0,
+                        averageUtilityScore: 0
+                    },
+                    duplicates: [],
+                    junkNotes: [],
+                    organizationSuggestions: [{
+                        type: 'Permission Error',
+                        current: 'Apple Notes Access Denied',
+                        suggested: 'Please grant permission to access Apple Notes in System Preferences > Security & Privacy > Automation',
+                        noteId: 'permission-error',
+                        content: 'The app needs permission to access Apple Notes. Please check System Preferences.',
+                        isReal: false
+                    }],
+                    allRealNotes: [],
+                    processingTime: 100
+                });
+            }
+            
             // Try to get real note IDs from Apple Notes
             console.log('🍎 NATIVE APP: Getting real note IDs from Apple Notes...');
             
@@ -69,14 +114,13 @@ tell application "Notes"
                     set folderName to name of (container of nt) as string
                 end try
                 
-                -- Clean the content by removing HTML tags and limiting length
-                set cleanContent to my cleanText(noteBody)
+                -- Simple text cleaning without complex quote handling
+                set cleanContent to my simpleClean(noteBody)
                 if length of cleanContent > 200 then
                     set cleanContent to text 1 thru 200 of cleanContent & "..."
                 end if
                 
-                -- Clean the title by removing any problematic characters
-                set cleanTitle to my cleanText(noteTitle)
+                set cleanTitle to my simpleClean(noteTitle)
                 if length of cleanTitle > 100 then
                     set cleanTitle to text 1 thru 100 of cleanTitle & "..."
                 end if
@@ -105,43 +149,28 @@ tell application "Notes"
     return finalResult
 end tell
 
--- Helper function to clean text content
-on cleanText(inputText)
+-- Simplified text cleaning function
+on simpleClean(inputText)
     try
-        -- Remove HTML tags
         set cleanedText to inputText
         
-        -- Simple HTML tag removal (basic approach)
-        repeat while cleanedText contains "<"
-            set startTag to offset of "<" in cleanedText
-            set endTag to offset of ">" in cleanedText
-            if endTag > startTag then
-                set cleanedText to (text 1 thru (startTag - 1) of cleanedText) & (text (endTag + 1) thru -1 of cleanedText)
-            else
-                exit repeat
-            end if
-        end repeat
-        
-        -- Remove extra whitespace and newlines
-        set cleanedText to my replaceText(cleanedText, "\\n", " ")
-        set cleanedText to my replaceText(cleanedText, "\\r", " ")
-        set cleanedText to my replaceText(cleanedText, "  ", " ")
-        
-        -- Remove any remaining delimiter characters to prevent parsing issues
+        -- Remove common problematic characters
         set cleanedText to my replaceText(cleanedText, "|||", " ")
         set cleanedText to my replaceText(cleanedText, "###", " ")
-        set cleanedText to my replaceText(cleanedText, "\"", "'")
-        
-        -- Ensure no line breaks or special characters that could break HTML
         set cleanedText to my replaceText(cleanedText, return, " ")
         set cleanedText to my replaceText(cleanedText, linefeed, " ")
         set cleanedText to my replaceText(cleanedText, tab, " ")
+        
+        -- Remove extra spaces
+        repeat while cleanedText contains "  "
+            set cleanedText to my replaceText(cleanedText, "  ", " ")
+        end repeat
         
         return cleanedText
     on error
         return inputText
     end try
-end cleanText
+end simpleClean
 
 -- Helper function to replace text
 on replaceText(inputText, searchText, replaceText)
